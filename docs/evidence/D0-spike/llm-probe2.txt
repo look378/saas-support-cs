@@ -1,0 +1,33 @@
+==========================================================================
+  调用参数实测  model=deepseek-chat
+==========================================================================
+
+[P2] 思考模式对返回内容的影响
+  默认(不传 thinking)          : {"content": "收到", "reasoning_len": 0, "finish": "stop", "tokens": 9}
+  thinking=disabled            : {"content": "收到", "reasoning_len": 0, "finish": "stop", "tokens": 9}
+  reasoning_effort=none        : {"content": "收到", "reasoning_len": 0, "finish": "stop", "tokens": 9}
+  两者同时                     : {"content": "收到", "reasoning_len": 0, "finish": "stop", "tokens": 9}
+  未传thinking + max_tokens=512: {"content": "收到", "reasoning_len": 0, "finish": "stop", "tokens": 9}
+
+  思考模式下 max_tokens 是否被思考耗尽：
+    max_tokens=64  thinking=enabled -> finish=length content_len=0 reasoning_len=120 tokens=105
+
+[P1] 结构化输出的可用路径
+
+  路径A: response_format=json_object（原生 HTTP）
+    [可用] 解析成功: {"cause": "访问令牌过期", "confidence": 0.95, "evidence": ["用户反馈钉钉机器人从昨天开始不再回复消息", "查询发现访问令牌已于昨日到期"]}
+
+  路径B: langchain with_structured_output(method='function_calling')
+    [可用] method=function_calling 1891ms -> {"cause":"TOKEN_EXPIRED","confidence":0.9,"evidence":["用户反馈钉钉机器人从昨天开始不再回复消息","查询发现访问令牌已于昨日到期","故障起始时间与令牌到期时间一致"]}
+    [失败] method=json_mode        OpenAIInvalidRequestError: Error code: 400 - {'error': {'message': "Prompt must contain the word 'json' in some form to use 'response_format' of type 'json_object'. (request_id:
+
+  路径C: langchain with_structured_output(method='json_schema')
+    [失败] OpenAIInvalidRequestError: Error code: 400 - {'error': {'message': 'This response_format type is unavailable now (request_id: 38a1b7d3-2c95-4af1-ae81-4f6d7d4a611c)', 'type': 'invalid_request_error', 'param':
+
+  路径D: 提示词约束 + 自行解析（兜底方案）
+    [可用] {"cause":"访问令牌过期导致钉钉机器人无法调用接口，从而不再回复消息","confidence":0.95,"evidence":["用户反馈钉钉机器人从昨天开始不再回复消息","查询发现访问令牌已于昨日到期","令牌到期时间与故障开始时间一致"]}
+
+[稳定性] deepseek-chat 连续 5 次是否稳定返回非空内容
+  非空回复 5/5
+
+==========================================================================

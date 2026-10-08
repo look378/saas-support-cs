@@ -1,0 +1,70 @@
+    The files belonging to this database system will be owned by user "look378".
+    This user must also own the server process.
+    
+    The database cluster will be initialized with locale "C".
+    The default text search configuration will be set to "english".
+    
+    Data page checksums are disabled.
+    
+    fixing permissions on existing directory D:/Project_Experience2.0/��Ŀ��/saas-support-cs/data/pg/primary ... ok
+    creating subdirectories ... ok
+    selecting dynamic shared memory implementation ... windows
+    selecting default max_connections ... 100
+    selecting default shared_buffers ... 128MB
+    selecting default time zone ... Asia/Shanghai
+    creating configuration files ... ok
+    running bootstrap script ... ok
+    performing post-bootstrap initialization ... ok
+    syncing data to disk ... ok
+    
+    Success. You can now start the database server using:
+    
+        ^"D^:^\Project^_Experience2^.0^\^.toolchain^\pg16^\pgsql^\bin^\pg^_ctl^" -D ^"D^:^\Project^_Experience2^.0^\^�^�^�^�^�^�^\saas^-support^-cs^\data^\pg^\primary^" -l logfile start
+    
+    DO
+    GRANT ROLE
+    CREATE DATABASE
+    GRANT
+    ALTER DATABASE
+   rolname  | rolsuper | rolreplication 
+  ----------+----------+----------------
+   repl     | f        | t
+   saaskefu | f        | f
+  (2 rows)
+  
+    repl -> pg_checkpoint
+PG_INIT_OK=True
+127.0.0.1:5432 - accepting connections
+PRIMARY_READY_EXIT=0
+ member | granted_role  
+--------+---------------
+ repl   | pg_checkpoint
+(1 row)
+
+CHECKPOINT
+REPL_CHECKPOINT_EXIT=0
+    waiting for checkpoint
+    25593/32025 kB (79%), 0/1 tablespace
+    32035/32035 kB (100%), 0/1 tablespace
+    32035/32035 kB (100%), 1/1 tablespace
+     client_addr |   state   | sync_state | sent_lsn  | replay_lsn 
+    -------------+-----------+------------+-----------+------------
+     127.0.0.1   | streaming | async      | 0/3000000 | 0/3000000
+    (1 row)
+    
+     is_standby 
+    ------------
+     t
+    (1 row)
+    
+PG_REPLICA_OK=True
+ client_addr |   state   | sync_state 
+-------------+-----------+------------
+ 127.0.0.1   | streaming | async
+(1 row)
+
+ is_standby 
+------------
+ t
+(1 row)
+

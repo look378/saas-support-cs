@@ -1,0 +1,175 @@
+# =====================================================================
+# 智汇云客服 · 生产形态编排（**交付物**）
+#
+# 说明：
+#   本文件描述系统的生产部署形态，作为交付物提供。
+#   本机开发与验收**不依赖**它——本机全部中间件以免安装 zip 版前台进程运行，
+#   不使用 Docker（见 README §2 与 docs/environment-constraints.md）。
+#
+# 使用：
+#   docker compose -f deploy/docker-compose.yml up -d
+#   然后执行：docker compose exec api python -m app.cli init-db && python -m app.cli seed
+# =====================================================================
+name: saaskefu
+
+services:
+  # ------------------------------------------------------------------
+  # 数据库：主库（写）
+  # ------------------------------------------------------------------
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: saaskefu-pg-primary
+    environment:
+      POSTGRES_USER: saaskefu
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?请在 .env 中设置 PG_PASSWORD}
+      POSTGRES_DB: saaskefu
+      # 主从流复制所需的 WAL 级别
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - hot_standby=on
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saaskefu -d saaskefu"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # 数据库：从库（只读）。生产环境建议改用托管只读副本。
+  # ------------------------------------------------------------------
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: saaskefu-pg-replica
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${PG_PASSWORD:?请在 .env 中设置 PG_PASSWORD}
+    # 首次启动时用 pg_basebackup 拉取基础备份并进入 standby 模式
+    entrypoint: >
+      bash -c "
+      if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+        pg_basebackup -h postgres-primary -U repl -D /var/lib/postgresql/data -Fp -Xs -R -P &&
+        echo \"primary_conninfo = 'host=postgres-primary port=5432 user=repl password=$$PGPASSWORD'\" >> /var/lib/postgresql/data/postgresql.conf &&
+        echo 'hot_standby = on' >> /var/lib/postgresql/data/postgresql.conf;
+      fi;
+      exec docker-entrypoint.sh postgres -p 5433"
+    ports:
+      - "5433:5433"
+    volumes:
+      - pg_replica_data:/var/lib/postgresql/data
+
+  # ------------------------------------------------------------------
+  # 缓存：会话状态 / 坐席心跳 / 转人工队列 / 分布式锁 / 限流
+  # 生产演进：哨兵 → 集群
+  # ------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: saaskefu-redis
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ------------------------------------------------------------------
+  # Mock 业务后端（生产环境替换为真实业务系统，改为外部地址即可）
+  # ------------------------------------------------------------------
+  mock:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: saaskefu-mock
+    command: ["uvicorn", "app.mocks.server:app", "--host", "0.0.0.0", "--port", "8010"]
+    environment:
+      LOG_JSON: "true"
+    ports:
+      - "8010:8010"
+
+  # ------------------------------------------------------------------
+  # API 网关 + Agent 服务
+  # 注意：入口用 `python -m app.main`（自建选择器事件循环）。
+  # 在 Linux 容器中事件循环无此限制，但仍建议统一走同一入口，避免环境差异。
+  # ------------------------------------------------------------------
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: saaskefu-api
+    command: ["python", "-m", "app.main"]
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mock:
+        condition: service_started
+    environment:
+      # 容器内使用服务名互访
+      PG_HOST: postgres-primary
+      PG_PRIMARY_PORT: "5432"
+      PG_REPLICA_PORT: "5433"
+      PG_PASSWORD: ${PG_PASSWORD:?请在 .env 中设置 PG_PASSWORD}
+      PG_REPLICA_ENABLED: "true"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      MOCK_BASE_URL: http://mock:8010
+      API_HOST: 0.0.0.0
+      API_PORT: "8011"
+      # 密钥一律由外部注入，不写入镜像
+      LLM_API_KEY: ${LLM_API_KEY:?请在 .env 中设置 LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-chat}
+      JWT_USER_SECRET: ${JWT_USER_SECRET:?请在 .env 中设置 JWT_USER_SECRET}
+      JWT_AGENT_SECRET: ${JWT_AGENT_SECRET:?请在 .env 中设置 JWT_AGENT_SECRET}
+      BILLING_HMAC_SECRET: ${BILLING_HMAC_SECRET:?请在 .env 中设置 BILLING_HMAC_SECRET}
+      LOG_JSON: "true"
+    ports:
+      - "8011:8011"
+    volumes:
+      # 向量库与日志持久化
+      - rag_data:/app/data/rag
+      - app_logs:/app/logs
+
+  # ------------------------------------------------------------------
+  # 坐席工作台（Streamlit）
+  # ------------------------------------------------------------------
+  dashboard:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: saaskefu-dashboard
+    command:
+      - python
+      - -m
+      - streamlit
+      - run
+      - app/dashboard.py
+      - --server.port=8502
+      - --server.address=0.0.0.0
+      - --server.headless=true
+      - --browser.gatherUsageStats=false
+    depends_on:
+      - api
+    environment:
+      API_HOST: 0.0.0.0
+    ports:
+      - "8502:8502"
+
+volumes:
+  pg_primary_data:
+  pg_replica_data:
+  redis_data:
+  rag_data:
+  app_logs:

@@ -1,0 +1,9 @@
+  1_initdb                         PASS
+  2_start                          PASS
+  3_write                          PASS
+  4_read                           PASS
+  5_checkpoint_superuser           FAIL(ERROR:  could not signal for checkpoint: Operation not permitted)
+  6_checkpoint_repl                FAIL(ERROR:  could not signal for checkpoint: Operation not permitted)
+  7_basebackup                     FAIL
+  8_recovery_after_kill            FAIL(恢复后卡在启动状态)
+  9_restart_after_graceful_stop    FAIL

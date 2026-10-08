@@ -1,0 +1,64 @@
+2026-10-04T16:02:40.703604 [info     ] tool.client.ready              [app.tools.client] base_url=http://127.0.0.1:8010 trace_id=-
+==========================================================================
+  工具层验证（真实调用 Mock 后端 + 全部降级路径）
+==========================================================================
+
+[1] 四类域正常调用
+2026-10-04T16:02:40.722463 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=18.51 session_id=s-tools status=200 target=/mock/integration/config tenant_id=t-001 tool=query_integration_config trace_id=tool-verify-1
+  [ OK ] 集成域：查到令牌过期  -> health=degraded
+2026-10-04T16:02:40.726060 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.97 session_id=s-tools status=200 target=/mock/permission/document tenant_id=t-001 tool=query_document_permission trace_id=tool-verify-1
+  [ OK ] 权限域：查到分享未开启  -> title=Q4 产品路线图
+2026-10-04T16:02:40.728835 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.84 session_id=s-tools status=200 target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-1
+2026-10-04T16:02:40.732463 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=3.14 session_id=s-tools status=200 target=/mock/billing/invoice tenant_id=t-001 tool=query_invoice trace_id=tool-verify-1
+2026-10-04T16:02:40.736603 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.89 session_id=s-tools status=200 target=/mock/billing/usage tenant_id=t-001 tool=query_usage trace_id=tool-verify-1
+  [ OK ] 计费域：订阅+账单+用量齐全  -> 金额=2380.0 超限=38000
+2026-10-04T16:02:40.738617 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.3 session_id=s-tools status=200 target=/mock/account/login-events tenant_id=t-001 tool=query_login_events trace_id=tool-verify-1
+  [ OK ] 账号域：查到异常登录信号  -> score_hint=0.87
+
+[2] 技能 2 的远程修复与验证动作
+2026-10-04T16:02:40.743400 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=3.45 session_id=s-tools status=200 target=/mock/integration/webhook/repair tenant_id=t-001 tool=repair_webhook trace_id=tool-verify-2
+  [ OK ] 修复 Webhook 成功且可达  -> https://hooks.example.com/ws-1002/current-path
+2026-10-04T16:02:40.746966 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=3.08 session_id=s-tools status=200 target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=tool-verify-2
+  [ OK ] 验证可达：真实投递并拿到回执  -> message_id=msg-8282f9 latency=142.0ms
+2026-10-04T16:02:40.749107 [warning  ] tool.call.retry                [app.tools.client] attempt=1 code=DELIVERY_FAILED session_id=s-tools target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=tool-verify-2
+2026-10-04T16:02:40.752216 [warning  ] degraded                       [degraded] code=DELIVERY_FAILED reason=tool.upstream_error session_id=s-tools status=502 target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=tool-verify-2
+  [ OK ] 未修复工作区验证失败（可据此判定修复未生效）  -> code=DELIVERY_FAILED
+2026-10-04T16:02:40.756068 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.69 session_id=s-tools status=200 target=/mock/permission/share/grant tenant_id=t-001 tool=grant_document_share trace_id=tool-verify-2
+2026-10-04T16:02:40.759074 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.48 session_id=s-tools status=200 target=/mock/permission/verify-access tenant_id=t-001 tool=verify_document_access trace_id=tool-verify-2
+  [ OK ] 权限修复后复核可访问  -> via=direct_grant
+2026-10-04T16:02:40.761579 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.3 session_id=s-tools status=200 target=/mock/account/lock tenant_id=t-001 tool=lock_account trace_id=tool-verify-2
+2026-10-04T16:02:40.765594 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.89 session_id=s-tools status=200 target=/mock/account/notify tenant_id=t-001 tool=notify_user trace_id=tool-verify-2
+2026-10-04T16:02:40.768110 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.56 session_id=s-tools status=200 target=/mock/account/verify tenant_id=t-001 tool=verify_account_security trace_id=tool-verify-2
+  [ OK ] 账号锁定+通知+复核通过  -> 吊销会话=3 处置后风险分=0.12
+
+[3] 计费写操作（签名/时间戳/防重放由工具层自动处理）
+2026-10-04T16:02:40.770665 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.46 session_id=s-tools status=200 target=/mock/billing/adjustment tenant_id=t-001 tool=create_billing_adjustment trace_id=tool-verify-3
+  [ OK ] 账务调整成功（签名自动生成并通过校验）  -> id=adj-100960
+2026-10-04T16:02:40.773896 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.53 session_id=s-tools status=200 target=/mock/billing/adjustment/approval tenant_id=t-001 tool=request_billing_approval trace_id=tool-verify-3
+  [ OK ] 转人工审批请求成功  -> approver=billing_admin
+
+[4] 降级路径（X-Mock-Mode 各模式）
+2026-10-04T16:02:40.776960 [warning  ] tool.call.retry                [app.tools.client] attempt=1 code=MOCK_UPSTREAM_ERROR session_id=s-tools target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=tool-verify-4
+2026-10-04T16:02:40.779472 [warning  ] degraded                       [degraded] code=MOCK_UPSTREAM_ERROR reason=tool.upstream_error session_id=s-tools status=500 target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=tool-verify-4
+  [ OK ] error 模式 → upstream 错误（可重试）  -> kind=upstream code=MOCK_UPSTREAM_ERROR
+  [ OK ] unauthorized 模式 → 鉴权错误（不重试）  -> code=TOKEN_INVALID
+2026-10-04T16:02:40.784573 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.22 session_id=s-tools status=200 target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+2026-10-04T16:02:40.785571 [warning  ] degraded                       [degraded] detail="1 validation error for SubscriptionInfo\naccount_id\n  Field required [type=missing, input_value={'unexpected_field': 'oop...amount': 'not-a-number'}, input_type=dict]\n    For further information visit " errors=1 reason=tool.schema_invalid session_id=s-tools target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+  [ OK ] bad_data 模式 → 结构校验失败（触发兜底话术）  -> kind=bad_data
+2026-10-04T16:03:10.803080 [warning  ] tool.call.retry                [app.tools.client] attempt=1 code=MOCK_TIMEOUT session_id=s-tools target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+2026-10-04T16:03:40.806606 [warning  ] tool.call.retry                [app.tools.client] attempt=2 code=MOCK_TIMEOUT session_id=s-tools target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+2026-10-04T16:04:10.811852 [warning  ] degraded                       [degraded] code=MOCK_TIMEOUT reason=tool.upstream_error session_id=s-tools status=504 target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+  [ OK ] timeout 模式 → 超时错误  -> kind=upstream code=MOCK_TIMEOUT
+2026-10-04T16:04:10.816257 [warning  ] tool.call.retry                [app.tools.client] attempt=1 code=TRANSIENT_MOCK_FAILURE session_id=s-tools target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+2026-10-04T16:04:10.818893 [warning  ] tool.call.retry                [app.tools.client] attempt=2 code=TRANSIENT_MOCK_FAILURE session_id=s-tools target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+2026-10-04T16:04:10.822256 [info     ] tool.call.ok                   [app.tools.client] attempt=3 duration_ms=10.53 session_id=s-tools status=200 target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=tool-verify-4
+  [ OK ] 瞬时故障经重试后成功（重试策略生效）
+
+[5] 调用记录与统计
+  [ OK ] 工具调用均被记录  -> 统计={'calls': 16, 'ok': 15, 'failed': 1, 'retries': 1, 'avg_duration_ms': 3.81}
+  [ OK ] 失败调用也被记录（便于排查）  -> 失败数=1
+
+==========================================================================
+  通过 18 项 / 失败 0 项
+==========================================================================
+  工具层验证全部通过。

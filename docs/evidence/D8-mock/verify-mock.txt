@@ -1,0 +1,36 @@
+==========================================================================
+  Mock 服务契约验证
+==========================================================================
+
+[1] 四类域正常返回（契约符合性）
+  [ OK ] 集成域 config 返回令牌过期画像  -> health=degraded scopes=['chat:write', 'channels:read']
+  [ OK ] 权限域 document 返回分享未开启画像  -> share.mode=private
+  [ OK ] 计费域 subscription 返回高金额争议画像  -> plan=team seats=25
+  [ OK ] 计费域 invoice 金额超阈值且标记争议  -> dispute=重复计费：11 月席位费被计两次
+  [ OK ] 账号域 login-events 返回高风险信号  -> score_hint=0.87
+
+[2] 确定性：同 ID 多次请求画像一致
+  [ OK ] 重复请求返回同一画像（可复现演示与断言）
+
+[3] X-Mock-Mode 五种模式
+  [ OK ] error 模式返回 5xx + retryable  -> code=MOCK_UPSTREAM_ERROR
+  [ OK ] unauthorized 模式返回 401 + 不可重试
+  [ OK ] bad_data 模式返回 200 但结构非法（可触发校验兜底）  -> data={'unexpected_field': 'oops', 'amount': 'not-a-number'}
+  [ OK ] X-Mock-Fail-N 实现瞬时故障（前2次500，第3次200）  -> codes=[500, 500, 200]
+  [ OK ] timeout 模式最终返回 504  -> code=MOCK_TIMEOUT
+
+[4] 计费写操作安全（签名 / 时间戳 / 防重放 / 幂等）
+  [ OK ] 合法签名请求成功  -> adjustment_id=adj-100894
+  [ OK ] 同 nonce 重放被拒（防重放）
+  [ OK ] 签名错误被拒
+  [ OK ] 时间戳超窗被拒  -> window=±300s
+  [ OK ] 缺签名要素被拒
+  [ OK ] 同幂等键第二次返回首次结果并标记 replayed
+
+[5] 故障画像区分度（技能 2 三分类可诊断性）
+  [ OK ] 四类集成故障画像可被区分  -> {"ws-1001": "TOKEN_EXPIRED", "ws-1002": "WEBHOOK_INVALID", "ws-1003": "SCOPE_REVOKED", "ws-1004": "HEALTHY"}
+
+==========================================================================
+  通过 18 项 / 失败 0 项
+==========================================================================
+  Mock 服务契约验证全部通过。

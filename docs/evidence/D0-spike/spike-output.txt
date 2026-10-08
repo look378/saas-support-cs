@@ -1,0 +1,51 @@
+==========================================================================
+  扩展点验证 · SaaS 智能客服系统
+==========================================================================
+
+[A] 核心层
+  [ OK ] A1 配置加载  -> env=local dim=512 llm=deepseek-chat key=已配置(sk-y…here, len=16)
+2026-10-04T15:20:38.877594 [info     ] spike.demo.start               [step] node=n1 session_id=s-1 tenant_id=t-001 trace_id=spiketrace0001
+2026-10-04T15:20:38.877594 [info     ] spike.demo.end                 [step] duration_ms=0.54 foo=bar node=n1 session_id=s-1 slow=False status=ok tenant_id=t-001 trace_id=spiketrace0001
+2026-10-04T15:20:38.877594 [info     ] spike.log.ok                   [spike] node=n1 session_id=s-1 tenant_id=t-001 trace_id=spiketrace0001
+  [ OK ] A2 结构化日志 + 链路字段  -> log=app.log 含 trace_id 与 duration_ms
+  [ OK ] A3 链路上下文隔离（并发安全前提）  -> 20 个并发协程上下文互不串扰
+
+[B] 向量化
+2026-10-04T15:20:38.914403 [info     ] embedding.provider.ready       [app.core.embedding] dim=512 provider='local-hashing-v1(dim=512,ngram=1-3)' trace_id=-
+  [ OK ] B1 维度与确定性  -> local-hashing-v1(dim=512,ngram=1-3) 维度=512 确定性=是
+  [ OK ] B2 区分度与语义排序  -> token_expired:0.318 → webhook_bad:0.256 → billing:0.073 → billing2:0.014
+  [ OK ] B3 批量向量化与空文本健壮性  -> 3 条批量（含空串）均返回合法维度
+
+[C] 向量库（本机持久化）
+2026-10-04T15:20:39.741181 [info     ] vector.upsert.start            [step] trace_id=-
+2026-10-04T15:20:39.790070 [info     ] vector.upsert.end              [step] collection=spike_probe count=3 duration_ms=50.13 slow=False status=ok trace_id=-
+2026-10-04T15:20:39.794522 [info     ] vector.search.start            [step] trace_id=-
+2026-10-04T15:20:39.797549 [info     ] vector.search.end              [step] collection=spike_probe duration_ms=2.43 slow=False status=ok top_k=2 trace_id=-
+  [ OK ] C1 集合创建 / 写入 / 查询  -> 写入3条 查询首条命中=c1 分数=0.459
+2026-10-04T15:20:39.803560 [info     ] vector.search.start            [step] trace_id=-
+2026-10-04T15:20:39.805631 [info     ] vector.search.end              [step] collection=spike_probe duration_ms=1.95 slow=False status=ok top_k=1 trace_id=-
+  [ OK ] C2 持久化复用（二次打开不重建）  -> 复用已有集合 条数=3
+2026-10-04T15:20:39.809662 [info     ] vector.search.start            [step] trace_id=-
+2026-10-04T15:20:39.812333 [info     ] vector.search.end              [step] collection=spike_probe duration_ms=2.05 slow=False status=ok top_k=3 trace_id=-
+  [ OK ] C3 空检索可被识别（降级矩阵前提）  -> 高阈值下正确返回空结果（可触发兜底话术）
+
+[D] 状态图与状态持久化
+  [ OK ] D1 StateGraph 建图 / 条件边 / 环路执行  -> 路径=start→check→retry→check→done
+  [ OK ] D2 状态持久化接口可用（checkpointer 存在性）  -> AsyncPostgresSaver(setup/aput) 与 InMemorySaver 均可用
+  [ OK ] D3 带内存 checkpointer 的续接（thread_id 隔离）  -> sess-A 累计 2 轮 / sess-B 累计 1 轮（互不影响）
+
+[E] 框架能力探测（佐证技术选型）
+  [ OK ] E1 旧世代 Agent 执行器 API 不存在（选型依据）  -> langchain=1.4.3 无旧式 Agent 执行器（与 ADR-002 一致）
+2026-10-04T15:20:41.598401 [info     ] langchain-openai detected system proxy configuration and no explicit `http_socket_options` / `http_client` / `http_async_client` / `openai_proxy`; skipping the custom `httpx` transport so httpx's env-proxy auto-detection applies. Pass `http_socket_options=[...]` to opt back into kernel-level TCP keepalive tuning on top of the env proxy. [langchain_openai.chat_models._client_utils] trace_id=-
+  [ OK ] E2 结构化输出能力（诊断结论落库前提）  -> with_structured_output / bind_tools 可用
+  [ OK ] E3 LLM 客户端实例化（不发起真实请求）  -> model=deepseek-chat base=https://api.deepseek.com
+
+[F] 存储与缓存驱动
+  [ OK ] F1 PostgreSQL 驱动可导入  -> psycopg=3.3.6 sqlalchemy 可用
+  [ OK ] F2 Redis 客户端可导入  -> redis=8.1.0
+  [ OK ] F3 Chroma 版本与持久化客户端  -> chromadb=1.5.9 PersistentClient 可用
+
+==========================================================================
+  通过 18 项 / 失败 0 项
+==========================================================================
+  全部扩展点验证通过，可进入业务实现。

@@ -1,0 +1,208 @@
+==========================================================================
+  端到端验证：诊断 → 转人工 → 接管 → 办结   [HTTP 真实链路]
+==========================================================================
+
+[0] 准备：装载种子数据
+2026-10-04T16:25:43.378920 [info     ] seed.run.start                 [step] tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:43.493528 [info     ] db.engine.primary.ready        [app.core.database] dsn=postgresql+psycopg://saaskefu:***@127.0.0.1:5432/saaskefu tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:43.995857 [info     ] knowledge.rebuild.start        [step] tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.838994 [info     ] embedding.provider.ready       [app.core.embedding] dim=512 provider='local-hashing-v1(dim=512,ngram=1-3)' tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.848637 [warning  ] vector.collection.dropped      [app.core.vector_store] collection=support_knowledge tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.890905 [info     ] db.engine.replica.ready        [app.core.database] dsn=postgresql+psycopg://saaskefu:***@127.0.0.1:5433/saaskefu tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.934022 [info     ] vector.upsert.start            [step] tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.984859 [info     ] vector.upsert.end              [step] collection=support_knowledge count=44 duration_ms=51.44 slow=False status=ok tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.984859 [info     ] knowledge.rebuild.end          [step] duration_ms=989.33 slow=False status=ok tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.986440 [info     ] knowledge.rebuilt              [app.services.knowledge_service] by_skill={'integration': 8, 'permission': 6, 'billing': 6, 'account': 4, 'faq': 20} cases=24 collection=support_knowledge embedding='local-hashing-v1(dim=512,ngram=1-3)' faq=20 indexed=44 tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:25:44.986440 [info     ] seed.done                      [app.services.seed_service] agents=6 cases=24 subscriptions=8 tenant_id=t-001 tenants=2 trace_id=e2e-seed users=20
+2026-10-04T16:25:44.986440 [info     ] seed.run.end                   [step] duration_ms=1608.36 slow=False status=ok tenant_id=t-001 trace_id=e2e-seed
+      新增：租户 2 / 坐席 6 / 用户 20 / 订阅 8 / 案例 24
+  [ OK ] 知识库已建索引（44 条）  -> indexed=44 cases=24 faq=20
+
+[1] 技能 2：集成故障诊断与修复（核心演示）
+2026-10-04T16:25:45.026204 [info     ] session.created                [app.services.session_service] session_key=e2e-int-001 tenant_id=t-001 trace_id=e73056625197443e92b93b5383e57d0a
+2026-10-04T16:25:45.909547 [info     ] agent.turn.start               [step] session_id=e2e-int-001 tenant_id=t-001 trace_id=e73056625197443e92b93b5383e57d0a user_id=u-42
+2026-10-04T16:25:45.955291 [info     ] tool.client.ready              [app.tools.client] base_url=http://127.0.0.1:8010 session_id=e2e-int-001 tenant_id=t-001 trace_id=e73056625197443e92b93b5383e57d0a user_id=u-42
+2026-10-04T16:25:46.051071 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=82.91 session_id=e2e-int-001 status=200 target=/mock/integration/config tenant_id=t-001 tool=query_integration_config trace_id=e73056625197443e92b93b5383e57d0a user_id=u-42
+2026-10-04T16:25:46.118933 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=47.41 session_id=e2e-int-001 status=200 target=/mock/integration/token/refresh tenant_id=t-001 tool=refresh_integration_token trace_id=e73056625197443e92b93b5383e57d0a user_id=u-42
+2026-10-04T16:25:46.172276 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=45.56 session_id=e2e-int-001 status=200 target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=e73056625197443e92b93b5383e57d0a user_id=u-42
+2026-10-04T16:25:46.198244 [info     ] agent.turn.end                 [step] duration_ms=288.46 session_id=e2e-int-001 session_key=e2e-int-001 skill_hint='工作区 ws-1001 的 slack 机器人从昨天开始就不回复消息了' slow=False status=ok tenant_id=t-001 trace_id=e73056625197443e92b93b5383e57d0a user_id=u-42
+2026-10-04T16:25:46.198244 [info     ] agent.turn_done                [app.services.agent_service] cause=TOKEN_EXPIRED duration_ms=289.06 escalate=False outcome=resolved skill=integration tenant_id=t-001 thread_id=t-001:e2e-int-001 trace_id=e73056625197443e92b93b5383e57d0a
+2026-10-04T16:25:46.203434 [info     ] http.request                   [app.gateway.middleware] duration_ms=1197.59 method=POST path=/api/v1/chat status=200 trace_id=e73056625197443e92b93b5383e57d0a
+  [ OK ] 对话接口返回 200  -> status=200
+  [ OK ] 路由到集成技能  -> skill=integration
+  [ OK ] 诊断结论为令牌过期  -> cause=TOKEN_EXPIRED 置信度=0.95
+  [ OK ] 执行了远程修复  -> 访问令牌已刷新
+  [ OK ] 验证可达通过（真投递回执）  -> 已向 #support-verify 投递验证消息，消息回执 msg-768137（142.0ms）
+  [ OK ] 闭环未转人工  -> outcome=resolved
+  [ OK ] 链路轨迹完整  -> ['route', 'observe', 'diagnose', 'act', 'verify', 'finalize']
+      回复：已为您修复并验证完成：
+1. 诊断结论：集成访问令牌已过期，导致机器人无法调用接口
+2. 已执行：访问令牌已刷新
+3. 验证结果：成功投递验证消息到 #support-verify，回执 msg-768137
+如果机器人...
+
+[2] 技能 5：账号安全异常排查
+2026-10-04T16:25:46.213128 [info     ] session.created                [app.services.session_service] session_key=e2e-acc-001 tenant_id=t-001 trace_id=69c64e51da4c44e9ae38443ebde2b234
+2026-10-04T16:25:46.258439 [info     ] agent.turn.start               [step] session_id=e2e-acc-001 tenant_id=t-001 trace_id=69c64e51da4c44e9ae38443ebde2b234 user_id=u-42
+2026-10-04T16:25:46.351277 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=45.26 session_id=e2e-acc-001 status=200 target=/mock/account/login-events tenant_id=t-001 tool=query_login_events trace_id=69c64e51da4c44e9ae38443ebde2b234 user_id=u-42
+2026-10-04T16:25:46.413741 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=50.61 session_id=e2e-acc-001 status=200 target=/mock/account/notify tenant_id=t-001 tool=notify_user trace_id=69c64e51da4c44e9ae38443ebde2b234 user_id=u-42
+2026-10-04T16:25:46.452334 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=36.48 session_id=e2e-acc-001 status=200 target=/mock/account/password/reset-required tenant_id=t-001 tool=require_password_reset trace_id=69c64e51da4c44e9ae38443ebde2b234 user_id=u-42
+2026-10-04T16:25:46.495513 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=40.97 session_id=e2e-acc-001 status=200 target=/mock/account/lock tenant_id=t-001 tool=lock_account trace_id=69c64e51da4c44e9ae38443ebde2b234 user_id=u-42
+2026-10-04T16:25:46.553840 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=48.88 session_id=e2e-acc-001 status=200 target=/mock/account/verify tenant_id=t-001 tool=verify_account_security trace_id=69c64e51da4c44e9ae38443ebde2b234 user_id=u-42
+2026-10-04T16:25:46.575938 [info     ] agent.turn.end                 [step] duration_ms=317.55 session_id=e2e-acc-001 session_key=e2e-acc-001 skill_hint='账号 u-42 凌晨在境外登录了，怀疑被盗' slow=False status=ok tenant_id=t-001 trace_id=69c64e51da4c44e9ae38443ebde2b234 user_id=u-42
+2026-10-04T16:25:46.576946 [info     ] agent.turn_done                [app.services.agent_service] cause=ACCOUNT_COMPROMISE_SUSPECTED duration_ms=318.14 escalate=True outcome=escalated skill=account tenant_id=t-001 thread_id=t-001:e2e-acc-001 trace_id=69c64e51da4c44e9ae38443ebde2b234
+2026-10-04T16:25:46.600947 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason=疑似账号被盗用，需人工跟进确认身份 session_key=e2e-acc-001 tenant_id=t-001 to_state=QUEUED trace_id=69c64e51da4c44e9ae38443ebde2b234
+2026-10-04T16:25:46.601954 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-acc-001 size=1 tenant_id=t-001 trace_id=69c64e51da4c44e9ae38443ebde2b234
+2026-10-04T16:25:46.616089 [info     ] escalation.created             [app.services.escalation_service] priority=0 request_no=ESC-20261004-5F3B15 session_key=e2e-acc-001 skill=account tenant_id=t-001 ticket_no=TK-20261004-B11D99 trace_id=69c64e51da4c44e9ae38443ebde2b234
+2026-10-04T16:25:46.628370 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-acc-001 size=1 tenant_id=t-001 trace_id=69c64e51da4c44e9ae38443ebde2b234
+2026-10-04T16:25:46.629542 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=account tenant_id=t-001 trace_id=69c64e51da4c44e9ae38443ebde2b234
+2026-10-04T16:25:46.631150 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=69c64e51da4c44e9ae38443ebde2b234 type=escalation.created
+2026-10-04T16:25:46.631677 [info     ] http.request                   [app.gateway.middleware] duration_ms=423.8 method=POST path=/api/v1/chat status=200 trace_id=69c64e51da4c44e9ae38443ebde2b234
+  [ OK ] 路由到账号安全技能  -> skill=account
+  [ OK ] 识别为疑似盗用  -> cause=ACCOUNT_COMPROMISE_SUSPECTED
+  [ OK ] 风险分达到高风险档  -> 风险分=100.0
+  [ OK ] 执行了锁定+通知  -> 动作=['lock_account', 'notify', 'require_password_reset']
+  [ OK ] 安全复核通过  -> 复核通过：活跃会话=0 风险分=0.12
+      回复：安全排查与处置已完成：
+1. 诊断结论：高度疑似账号被盗用
+2. 已执行：已发送安全提醒（email）；已要求下次登录重置口令；已临时锁定并吊销 3 个会话
+3. 复核结果：活跃会话 0 个，二次验证已启用，当前风险分 ...
+
+[3] 技能 1：FAQ 咨询
+2026-10-04T16:25:46.637763 [info     ] session.created                [app.services.session_service] session_key=e2e-faq-001 tenant_id=t-001 trace_id=1f4c613811ad46bdb532b183c39983be
+2026-10-04T16:25:46.688542 [info     ] agent.turn.start               [step] session_id=e2e-faq-001 tenant_id=t-001 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:46.782867 [info     ] vector.search.start            [step] session_id=e2e-faq-001 tenant_id=t-001 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:46.787923 [info     ] vector.search.end              [step] collection=support_knowledge duration_ms=5.2 session_id=e2e-faq-001 slow=False status=ok tenant_id=t-001 top_k=4 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:46.798976 [info     ] llm.client.ready               [app.core.llm_client] base_url=https://api.deepseek.com key='已配置(sk-8…a7f0, len=35)' model=deepseek-chat session_id=e2e-faq-001 tenant_id=t-001 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:47.709965 [info     ] langchain-openai detected system proxy configuration and no explicit `http_socket_options` / `http_client` / `http_async_client` / `openai_proxy`; skipping the custom `httpx` transport so httpx's env-proxy auto-detection applies. Pass `http_socket_options=[...]` to opt back into kernel-level TCP keepalive tuning on top of the env proxy. [langchain_openai.chat_models._client_utils] session_id=e2e-faq-001 tenant_id=t-001 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:48.030262 [info     ] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK" [httpx2] session_id=e2e-faq-001 tenant_id=t-001 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:48.808709 [info     ] llm.call.ok                    [app.core.llm_client] attempt=1 duration_ms=2008.43 kind=faq_answer model=deepseek-chat served_model=deepseek-flash session_id=e2e-faq-001 tenant_id=t-001 tokens=235 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:48.826114 [info     ] agent.turn.end                 [step] duration_ms=2137.95 session_id=e2e-faq-001 session_key=e2e-faq-001 skill_hint=怎么设置消息免打扰？ slow=False status=ok tenant_id=t-001 trace_id=1f4c613811ad46bdb532b183c39983be user_id=u-43
+2026-10-04T16:25:48.827444 [info     ] agent.turn_done                [app.services.agent_service] cause=KNOWLEDGE_FOUND duration_ms=2138.52 escalate=False outcome=resolved skill=faq tenant_id=t-001 thread_id=t-001:e2e-faq-001 trace_id=1f4c613811ad46bdb532b183c39983be
+2026-10-04T16:25:48.831495 [info     ] http.request                   [app.gateway.middleware] duration_ms=2196.34 method=POST path=/api/v1/chat status=200 trace_id=1f4c613811ad46bdb532b183c39983be
+  [ OK ] 路由到 FAQ 技能  -> skill=faq
+  [ OK ] 生成了回答  -> 在会话设置中打开「消息免打扰」，然后选择「始终」或「定时」（例如仅夜间）。免打扰期间消息仍会保留，不会丢失。
+
+[4] 技能 3：权限访问诊断（多方案）
+2026-10-04T16:25:48.842517 [info     ] session.created                [app.services.session_service] session_key=e2e-per-001 tenant_id=t-001 trace_id=8558339b681644c597cc5337f451057d
+2026-10-04T16:25:48.888659 [info     ] agent.turn.start               [step] session_id=e2e-per-001 tenant_id=t-001 trace_id=8558339b681644c597cc5337f451057d user_id=u-42
+2026-10-04T16:25:48.981650 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=46.1 session_id=e2e-per-001 status=200 target=/mock/permission/document tenant_id=t-001 tool=query_document_permission trace_id=8558339b681644c597cc5337f451057d user_id=u-42
+2026-10-04T16:25:49.043364 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=50.82 session_id=e2e-per-001 status=200 target=/mock/permission/share/grant tenant_id=t-001 tool=grant_document_share trace_id=8558339b681644c597cc5337f451057d user_id=u-42
+2026-10-04T16:25:49.109619 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=59.16 session_id=e2e-per-001 status=200 target=/mock/permission/verify-access tenant_id=t-001 tool=verify_document_access trace_id=8558339b681644c597cc5337f451057d user_id=u-42
+2026-10-04T16:25:49.124650 [info     ] agent.turn.end                 [step] duration_ms=235.96 session_id=e2e-per-001 session_key=e2e-per-001 skill_hint='文档 doc-771 打不开，提示没有访问权限' slow=False status=ok tenant_id=t-001 trace_id=8558339b681644c597cc5337f451057d user_id=u-42
+2026-10-04T16:25:49.124650 [info     ] agent.turn_done                [app.services.agent_service] cause=SHARE_NOT_ENABLED duration_ms=236.54 escalate=False outcome=resolved skill=permission tenant_id=t-001 thread_id=t-001:e2e-per-001 trace_id=8558339b681644c597cc5337f451057d
+2026-10-04T16:25:49.130131 [info     ] http.request                   [app.gateway.middleware] duration_ms=292.76 method=POST path=/api/v1/chat status=200 trace_id=8558339b681644c597cc5337f451057d
+  [ OK ] 路由到权限技能  -> skill=permission
+  [ OK ] 诊断分享未开启  -> cause=SHARE_NOT_ENABLED
+  [ OK ] 给出多个可选方案  -> 方案数=2
+  [ OK ] 执行推荐方案后复核通过  -> 复核结果：可访问（途径 grant_viewer）
+
+[5] 技能 4：计费争议（风控 + 幂等 + 转人工审批）
+2026-10-04T16:25:49.139934 [info     ] session.created                [app.services.session_service] session_key=e2e-bil-001 tenant_id=t-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+2026-10-04T16:25:49.192693 [info     ] agent.turn.start               [step] session_id=e2e-bil-001 tenant_id=t-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4 user_id=u-42
+2026-10-04T16:25:49.296575 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=57.09 session_id=e2e-bil-001 status=200 target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=13e2d695a0724d3e8565b0fcae9ee3d4 user_id=u-42
+2026-10-04T16:25:49.347646 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=49.02 session_id=e2e-bil-001 status=200 target=/mock/billing/invoice tenant_id=t-001 tool=query_invoice trace_id=13e2d695a0724d3e8565b0fcae9ee3d4 user_id=u-42
+2026-10-04T16:25:49.395846 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=45.32 session_id=e2e-bil-001 status=200 target=/mock/billing/usage tenant_id=t-001 tool=query_usage trace_id=13e2d695a0724d3e8565b0fcae9ee3d4 user_id=u-42
+2026-10-04T16:25:49.470904 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=51.69 session_id=e2e-bil-001 status=200 target=/mock/billing/adjustment/approval tenant_id=t-001 tool=request_billing_approval trace_id=13e2d695a0724d3e8565b0fcae9ee3d4 user_id=u-42
+2026-10-04T16:25:49.495525 [info     ] agent.turn.end                 [step] duration_ms=303.41 session_id=e2e-bil-001 session_key=e2e-bil-001 skill_hint='这个月账单重复计费了，账号 acct-501，我要退款' slow=False status=ok tenant_id=t-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4 user_id=u-42
+2026-10-04T16:25:49.496527 [info     ] agent.turn_done                [app.services.agent_service] cause=BILLING_DISPUTE_CONFIRMED duration_ms=304.04 escalate=True outcome=escalated skill=billing tenant_id=t-001 thread_id=t-001:e2e-bil-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+2026-10-04T16:25:49.504706 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason=计费争议需人工审批 session_key=e2e-bil-001 tenant_id=t-001 to_state=QUEUED trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+2026-10-04T16:25:49.505214 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-bil-001 size=2 tenant_id=t-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+2026-10-04T16:25:49.508221 [info     ] escalation.created             [app.services.escalation_service] priority=0 request_no=ESC-20261004-698718 session_key=e2e-bil-001 skill=billing tenant_id=t-001 ticket_no=TK-20261004-96266D trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+2026-10-04T16:25:49.511243 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-acc-001 size=2 tenant_id=t-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+2026-10-04T16:25:49.512749 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=account tenant_id=t-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+2026-10-04T16:25:49.513755 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4 type=escalation.created
+2026-10-04T16:25:49.513755 [info     ] http.request                   [app.gateway.middleware] duration_ms=380.24 method=POST path=/api/v1/chat status=200 trace_id=13e2d695a0724d3e8565b0fcae9ee3d4
+D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\jwt\api_jwt.py:149: InsecureKeyLengthWarning: The HMAC key is 22 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  return self._jws.encode(
+  [ OK ] 路由到计费技能  -> skill=billing
+  [ OK ] 识别为计费争议  -> cause=BILLING_DISPUTE_CONFIRMED
+  [ OK ] 风险分已计算  -> 风险分=55.0
+  [ OK ] 大额争议转人工审批  -> decision=manual_approval
+  [ OK ] 因需审批而转人工
+
+[6] 转人工真实流转：队列 → 派单 → 接管 → 对话 → 办结
+  [ OK ] 已创建转人工记录  -> 单号=ESC-20261004-698718
+  [ OK ] 已创建工单  -> 工单号=TK-20261004-96266D
+  [ OK ] 交接快照非空  -> 快照 447 字符
+2026-10-04T16:25:49.583821 [info     ] agent.login_ok                 [app.api.v1.agent_routes] role=agent tenant_id=t-001 trace_id=e5067c05e8ab4bda8a1a043f9a7fa21b username=agent_zhao
+2026-10-04T16:25:49.584828 [info     ] http.request                   [app.gateway.middleware] duration_ms=65.88 method=POST path=/api/v1/agent/login status=200 trace_id=e5067c05e8ab4bda8a1a043f9a7fa21b
+D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\jwt\api_jwt.py:370: InsecureKeyLengthWarning: The HMAC key is 22 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+  [ OK ] 坐席登录成功  -> status=200
+2026-10-04T16:25:49.596592 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=675921db18ee47b6a6de74203d48d4ee type=agent.presence
+2026-10-04T16:25:49.597967 [info     ] http.request                   [app.gateway.middleware] duration_ms=9.22 method=POST path=/api/v1/agent/heartbeat status=200 trace_id=675921db18ee47b6a6de74203d48d4ee
+  [ OK ] 坐席心跳上报成功
+2026-10-04T16:25:49.603401 [info     ] http.request                   [app.gateway.middleware] duration_ms=3.24 method=GET path=/api/v1/agent/queue status=200 trace_id=b2a35e9b33e24c22ad15c817104d93cf
+  [ OK ] 队列中能看到待接入会话  -> 队列长度=2
+2026-10-04T16:25:49.614818 [info     ] eventbus.buffered_only         [app.services.event_bus] tenant_id=t-001 trace_id=- type=escalation.assigned
+2026-10-04T16:25:49.614818 [info     ] escalation.assigned            [app.services.escalation_service] agent=agent_zhao request_no=ESC-20261004-698718 session_key=e2e-bil-001 skill=billing tenant_id=t-001 trace_id=-
+  [ OK ] 派单成功且分配给在线坐席  -> {"assigned": true, "request_no": "ESC-20261004-698718", "session_key": "e2e-bil-001", "agent": "agent_zhao", "agent_name": "赵工", "reason": "计费争议需人工审批"
+2026-10-04T16:25:49.624968 [info     ] session.transition             [app.services.session_service] from_state=QUEUED handler=agent_zhao reason='坐席 agent_zhao 接管' session_key=e2e-bil-001 tenant_id=t-001 to_state=AGENT_HANDLING trace_id=82520d1951ba44c2b1bc5244c840c12a
+2026-10-04T16:25:49.629127 [info     ] session.claimed                [app.services.escalation_service] agent=agent_zhao session_key=e2e-bil-001 state=AGENT_HANDLING tenant_id=t-001 trace_id=82520d1951ba44c2b1bc5244c840c12a
+2026-10-04T16:25:49.630153 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=82520d1951ba44c2b1bc5244c840c12a type=session.claimed
+2026-10-04T16:25:49.630153 [info     ] http.request                   [app.gateway.middleware] duration_ms=11.75 method=POST path=/api/v1/agent/claim status=200 trace_id=82520d1951ba44c2b1bc5244c840c12a
+  [ OK ] 坐席接管成功（拿到分布式锁）  -> status=200 {"ok":true,"data":{"claimed":true,"session_key":"e2e-bil-001","agent":"agent_zhao","state":"AGENT_HANDLING","lock_token"
+  [ OK ] 会话状态切为坐席处理中  -> state=AGENT_HANDLING
+2026-10-04T16:25:49.698140 [info     ] agent.login_ok                 [app.api.v1.agent_routes] role=agent tenant_id=t-001 trace_id=a576cafb8a0e4c69934ad2b96965763c username=agent_lin
+2026-10-04T16:25:49.700212 [info     ] http.request                   [app.gateway.middleware] duration_ms=66.34 method=POST path=/api/v1/agent/login status=200 trace_id=a576cafb8a0e4c69934ad2b96965763c
+2026-10-04T16:25:49.707278 [warning  ] session.claim_rejected         [app.services.escalation_service] agent=agent_lin cause=already_claimed current_owner=agent_zhao session_key=e2e-bil-001 tenant_id=t-001 trace_id=75ac9fa1fbe241a4aef9c4469a68bc39
+2026-10-04T16:25:49.708280 [info     ] http.request                   [app.gateway.middleware] duration_ms=4.05 method=POST path=/api/v1/agent/claim status=409 trace_id=75ac9fa1fbe241a4aef9c4469a68bc39
+  [ OK ] 第二个坐席抢同一会话被拒绝（锁生效）  -> status=409
+2026-10-04T16:25:49.720724 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=5cd7eee08a504c0b8720555462745fb9 type=session.message
+2026-10-04T16:25:49.721724 [info     ] http.request                   [app.gateway.middleware] duration_ms=11.1 method=POST path=/api/v1/chat status=200 trace_id=5cd7eee08a504c0b8720555462745fb9
+  [ OK ] 坐席接管后 AI 不再介入  -> handler=agent_zhao skill=（无）
+2026-10-04T16:25:49.729778 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=90634661301e4015b80c0fab784b7332 type=session.message
+2026-10-04T16:25:49.730778 [info     ] http.request                   [app.gateway.middleware] duration_ms=6.57 method=POST path=/api/v1/agent/message status=200 trace_id=90634661301e4015b80c0fab784b7332
+  [ OK ] 坐席发送消息成功  -> status=200
+2026-10-04T16:25:49.749075 [info     ] session.transition             [app.services.session_service] from_state=AGENT_HANDLING handler=agent_zhao reason=坐席办结 session_key=e2e-bil-001 tenant_id=t-001 to_state=CLOSED trace_id=5c2257ee2ec64d5aa3d68a1257eb73b3
+2026-10-04T16:25:49.757164 [info     ] escalation.closed              [app.services.escalation_service] agent=agent_zhao handle_seconds=0.1 promoted=True session_key=e2e-bil-001 tenant_id=t-001 trace_id=5c2257ee2ec64d5aa3d68a1257eb73b3
+2026-10-04T16:25:49.758170 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=5c2257ee2ec64d5aa3d68a1257eb73b3 type=session.closed
+2026-10-04T16:25:49.758170 [info     ] http.request                   [app.gateway.middleware] duration_ms=24.53 method=POST path=/api/v1/agent/close status=200 trace_id=5c2257ee2ec64d5aa3d68a1257eb73b3
+  [ OK ] 办结成功  -> {'closed': True, 'session_key': 'e2e-bil-001', 'handle_seconds': 0.1, 'feedback_id': 1, 'promoted': True}
+  [ OK ] 办结时回流知识库（闭环）  -> feedback_id=1
+2026-10-04T16:25:49.772746 [info     ] http.request                   [app.gateway.middleware] duration_ms=11.03 method=GET path=/api/v1/session/e2e-bil-001 status=200 trace_id=aa51bce37bc14a50bdc557a427a5a69c
+  [ OK ] 会话状态为已关闭  -> state=CLOSED
+
+[7] 坐席掉线 → 心跳过期 → 会话自动重排队
+2026-10-04T16:25:49.775262 [info     ] session.created                [app.services.session_service] session_key=e2e-drop-001 tenant_id=t-001 trace_id=-
+2026-10-04T16:25:49.779574 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason=测试 session_key=e2e-drop-001 tenant_id=t-001 to_state=QUEUED trace_id=-
+2026-10-04T16:25:49.782631 [info     ] session.transition             [app.services.session_service] from_state=QUEUED handler=agent_zhao reason=接管 session_key=e2e-drop-001 tenant_id=t-001 to_state=AGENT_HANDLING trace_id=-
+  [ OK ] 掉线后心跳已失效  -> ttl=-2
+2026-10-04T16:25:49.784664 [error    ] db.tenant.guard_triggered      [app.core.database] hint=未绑定租户上下文即访问租户表，已阻止执行 statement='SELECT support_sessions.session_key, support_sessions.user_ext_id, support_sessions.workspace_id, support_sessions.channel, support_sessions.state, support_sess' table=support_sessions trace_id=-
+Traceback (most recent call last):
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\scripts\verify_e2e.py", line 301, in <module>
+    requeued = get_escalation_service().requeue_agent_sessions(tenant_id=TENANT, agent="agent_zhao")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\services\escalation_service.py", line 706, in requeue_agent_sessions
+    rows = s.execute(
+           ^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2373, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2271, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+           ^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1891, in _exec_single_context
+    str_statement, effective_parameters = fn(
+                                          ^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\events.py", line 183, in wrap_before_cursor_execute
+    orig_fn(
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\core\database.py", line 112, in _guard
+    raise TenantContextMissing(
+app.core.database.TenantContextMissing: 访问租户表 support_sessions 前必须绑定租户上下文（请求头 X-Tenant-ID 或 with bind(tenant_id=...)）

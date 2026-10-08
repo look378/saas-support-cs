@@ -1,0 +1,48 @@
+==========================================================================
+  工作台与实时推送验证
+==========================================================================
+
+[0] 服务可用性
+  [ OK ] API 服务可用  -> status=200
+
+[1] 坐席登录与心跳
+  [ OK ] 坐席登录成功  -> status=200
+  [ OK ] 心跳上报成功  -> {'presence': 'online', 'load': 0, 'ttl': 30}
+
+[2] 指标接口（工作台看板依赖）
+  [ OK ] 核心指标总览 可读  -> status=200
+  [ OK ] 按天趋势 可读  -> status=200
+  [ OK ] 分技能对比 可读  -> status=200
+  [ OK ] 转人工原因分布 可读  -> status=200
+  [ OK ] 坐席维度指标 可读  -> status=200
+  [ OK ] 模型调用计量 可读  -> status=200
+  [ OK ] AI vs 行业基准 可读  -> status=200
+  [ OK ] 总览含关键指标字段  -> 会话数=297 一次解决率=0.0
+  [ OK ] 人工基线标注为行业参考（未虚构实测）
+
+[3] 链路回放
+  [ OK ] 产生一次用于回放的诊断  -> status=200
+  [ OK ] 可列出最近诊断链路  -> 条数=5
+  [ OK ] 可按 trace_id 回放  -> trace_id=86569d94ca6b…
+  [ OK ] 回放含节点轨迹与工具调用  -> 节点=6 工具=3
+  [ OK ] 回放含耗时瀑布  -> 最慢=node:verify
+  [ OK ] 回放含最终结论  -> TOKEN_EXPIRED
+  [ OK ] 节点顺序体现诊断链  -> ['route', 'observe', 'diagnose', 'act', 'verify', 'finalize']
+  [ OK ] 回放可定位到工具出站目标  -> ['http://127.0.0.1:8010/mock/integration/config', 'http://127.0.0.1:8010/mock/integration/token/refresh']
+
+[4] WebSocket 实时推送（服务端主动推给坐席）
+  [ OK ] WebSocket 连接建立并收到 ready  -> 收到 3 条
+  [ OK ] 转人工由服务端主动推送（非轮询）  -> 事件类型=['agent.presence', 'console.ready', 'escalation.created']
+      推送载荷：{"type": "escalation.created", "tenant_id": "t-001", "request_no": "ESC-20261004-9452E4", "session_key": "ws-verify-1f6a7f02", "skill": "billing", "reason": "计费争议需人工审批", "priority": 0, "ticket_no": "TK-20261004-2E44BE", 
+  [ OK ] 推送内容含会话、技能与原因  -> skill='billing' reason='计费争议需人工审批'
+  [ OK ] 推送的是本次触发的会话  -> 推送=ws-verify-1f6a7f… 期望=ws-verify-1f6a7f…
+  [ OK ] AI 侧确已触发转人工  -> escalate=True decision=manual_approval
+
+[5] 静态控制台页面
+  [ OK ] 控制台页面可访问  -> status=200
+  [ OK ] 页面确实使用 WebSocket（而非轮询）
+
+==========================================================================
+  通过 27 项 / 失败 0 项
+==========================================================================
+  工作台与实时推送验证全部通过。

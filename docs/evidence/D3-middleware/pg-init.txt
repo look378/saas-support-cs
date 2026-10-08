@@ -1,0 +1,53 @@
+================================================================
+  PostgreSQL 主从双实例初始化
+  PostgreSQL : postgres (PostgreSQL) 16.6
+  主库目录   : D:\Project_Experience2.0\项目二\saas-support-cs\data\pg\primary  (端口 5432)
+  从库目录   : D:\Project_Experience2.0\项目二\saas-support-cs\data\pg\replica  (端口 5433)
+================================================================
+[Force] 清理既有数据目录
+  [primary] 未在运行
+  [replica] 未在运行
+
+[1/5] 初始化主库
+    initdb: error: could not create restricted token: error code 87
+    initdb: error: could not re-execute with restricted token: error code 3
+    The files belonging to this database system will be owned by user "look378".
+    This user must also own the server process.
+    
+    The database cluster will be initialized with locale "C".
+    The default text search configuration will be set to "english".
+    
+    Data page checksums are disabled.
+    
+    fixing permissions on existing directory D:/Project_Experience2.0/��Ŀ��/saas-support-cs/data/pg/primary ... ok
+    creating subdirectories ... ok
+    selecting dynamic shared memory implementation ... windows
+    selecting default max_connections ... 100
+    selecting default shared_buffers ... 128MB
+    selecting default time zone ... Asia/Shanghai
+    creating configuration files ... ok
+    running bootstrap script ... ok
+    performing post-bootstrap initialization ... ok
+    syncing data to disk ... ok
+    
+    Success. You can now start the database server using:
+    
+        ^"D^:^\Project^_Experience2^.0^\^.toolchain^\pg16^\pgsql^\bin^\pg^_ctl^" -D ^"D^:^\Project^_Experience2^.0^\^�^�^�^�^�^�^\saas^-support^-cs^\data^\pg^\primary^" -l logfile start
+    
+[2/5] 启动主库
+  [primary] 已启动 PID=56436 端口=5432 日志=D:\Project_Experience2.0\项目二\saas-support-cs\logs\pg-primary.log
+  主库就绪: 127.0.0.1:5432
+
+[3/5] 创建复制账号与应用库
+    DO
+    GRANT ROLE
+    CREATE DATABASE
+  业务库已创建: saaskefu
+    GRANT
+    ALTER DATABASE
+
+[4/5] 搭建从库（pg_basebackup）
+  [replica] 未在运行
+    waiting for checkpoint
+    pg_basebackup: error: could not initiate base backup: ERROR:  could not signal for checkpoint: Operation not permitted
+    pg_basebackup: removing data directory "D:\Project_Experience2.0\��Ŀ��\saas-support-cs\data\pg\replica"

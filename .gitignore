@@ -1,0 +1,34 @@
+# ===== 运行时 =====
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== 测试与环境临时目录 =====
+# 由测试/工具产生，不属于交付物。
+# 必须显式忽略：这些目录可能因权限异常而无法读取，
+# 而 git add 遇到"读不了的目录"会**整体放弃暂存**（本项目实测踩到，表现为暂存 0 个文件）。
+.pytest_tmp/
+.pytest_work/
+.tmp/
+
+# ===== 密钥（绝不提交）=====
+# .env 含 LLM_API_KEY 与 JWT/HMAC 密钥。若不慎已提交，
+# 必须**轮换密钥**而不是只删文件——历史里仍能检出原文。
+.env
+.env.local
+*.pem
+
+# ===== 运行期数据 =====
+data/rag/
+data/pg/
+data/redis/
+logs/
+*.log
+
+# ===== 工具与本地工具链 =====
+.toolchain/
+.probe/
+.wheelhouse/

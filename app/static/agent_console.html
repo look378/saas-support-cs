@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>坐席实时控制台 · 智汇云客服</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #171d24; --panel2: #1e262f; --line: #2a3540;
+    --fg: #e6edf3; --dim: #8b98a5; --accent: #3b82f6; --ok: #22c55e;
+    --warn: #f59e0b; --err: #ef4444; --hi: #a855f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.5 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px; padding: 12px 20px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .badge { padding: 2px 8px; border-radius: 10px; font-size: 12px; background: var(--panel2); border: 1px solid var(--line); }
+  .badge.on { color: var(--ok); border-color: #14532d; }
+  .badge.off { color: var(--err); border-color: #7f1d1d; }
+  main { display: grid; grid-template-columns: 320px 1fr 360px; gap: 12px; padding: 12px; height: calc(100vh - 60px); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+  .panel h2 { font-size: 13px; margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--dim); font-weight: 600; }
+  .panel .body { padding: 10px 14px; overflow: auto; flex: 1; }
+  .item { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+  .item.hi { border-color: var(--hi); }
+  .item .t { font-weight: 600; margin-bottom: 2px; }
+  .item .s { color: var(--dim); font-size: 12px; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 5px;
+    padding: 5px 10px; cursor: pointer; font-size: 12px;
+  }
+  button:hover { filter: brightness(1.15); }
+  button.ghost { background: var(--panel2); border: 1px solid var(--line); color: var(--fg); }
+  .ev { padding: 6px 8px; border-left: 3px solid var(--line); margin-bottom: 6px; background: var(--panel2); border-radius: 0 5px 5px 0; }
+  .ev.created { border-color: var(--warn); }
+  .ev.assigned { border-color: var(--accent); }
+  .ev.claimed { border-color: var(--ok); }
+  .ev.closed { border-color: var(--dim); }
+  .ev.disconnected { border-color: var(--err); }
+  .ev .m { font-size: 12px; }
+  .ev time { color: var(--dim); font-size: 11px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input, select {
+    background: var(--panel2); border: 1px solid var(--line); color: var(--fg);
+    border-radius: 5px; padding: 5px 8px; font-size: 13px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 600; }
+  .muted { color: var(--dim); font-size: 12px; }
+  .kpi { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi div { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  .kpi b { display: block; font-size: 20px; }
+  .kpi span { color: var(--dim); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>坐席实时控制台</h1>
+  <span id="conn" class="badge off">未连接</span>
+  <span id="who" class="badge">未登录</span>
+  <span class="row" style="margin-left:auto">
+    <input id="api" value="" placeholder="API 地址" style="width:220px" />
+    <select id="tenant"><option>t-001</option><option>t-002</option></select>
+    <select id="user"><option>agent_zhao</option><option>agent_lin</option><option>lead_chen</option></select>
+    <button id="login">登录并连接</button>
+    <button id="logout" class="ghost">断开</button>
+  </span>
+</header>
+
+<main>
+  <!-- 左：待接入队列 -->
+  <section class="panel">
+    <h2>待接入队列 <span id="queueCount" class="muted"></span></h2>
+    <div class="body">
+      <div class="row" style="margin-bottom:10px">
+        <button id="dispatch" class="ghost">触发派单</button>
+        <button id="refreshQueue" class="ghost">刷新</button>
+      </div>
+      <div id="queue"><div class="muted">暂无待接入会话</div></div>
+    </div>
+  </section>
+
+  <!-- 中：实时事件流 -->
+  <section class="panel">
+    <h2>实时事件流（服务端主动推送）</h2>
+    <div class="body" id="events"><div class="muted">连接后此处显示派单、接管、办结等实时事件。</div></div>
+  </section>
+
+  <!-- 右：在线坐席与状态 -->
+  <section class="panel">
+    <h2>在线坐席</h2>
+    <div class="body">
+      <div class="kpi" id="kpi" style="margin-bottom:10px"></div>
+      <div class="row" style="margin-bottom:8px">
+        <button id="hbOnline">上线心跳</button>
+        <button id="hbBreak" class="ghost">小休</button>
+        <button id="hbOffline" class="ghost">下线</button>
+      </div>
+      <div id="agents"><div class="muted">登录后显示</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ===========================================================================
+// 状态
+// ===========================================================================
+const state = { token: "", agent: "", tenant: "t-001", api: "", ws: null, timers: [] };
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// 默认 API 地址：与页面同源（由 /static 提供）。
+// 注意：本工程默认 API 端口为 8011（刻意避开常被其它工程占用的 8000），
+// 若通过 API 的 /static 访问本页，同源即为正确地址。
+state.api = window.location.origin;
+$("api").value = state.api;
+
+// ===========================================================================
+// HTTP 辅助
+// ===========================================================================
+async function api(path, { method = "GET", body = null, auth = true } = {}) {
+  const headers = { "X-Tenant-ID": state.tenant };
+  if (auth && state.token) headers["Authorization"] = `Bearer ${state.token}`;
+  if (body) headers["Content-Type"] = "application/json";
+  const res = await fetch(state.api + path, {
+    method, headers, body: body ? JSON.stringify(body) : null,
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = { ok: false, error: res.statusText }; }
+  return { status: res.status, data };
+}
+
+// ===========================================================================
+// 登录 / WebSocket
+// ===========================================================================
+async function login() {
+  state.tenant = $("tenant").value;
+  state.api = $("api").value.replace(/\/$/, "");
+  const r = await api("/api/v1/agent/login", {
+    method: "POST", auth: false,
+    body: { username: $("user").value, password: "Agent@12345" },
+  });
+  if (r.status !== 200 || !r.data.token) {
+    alert("登录失败：" + JSON.stringify(r.data).slice(0, 200));
+    return;
+  }
+  state.token = r.data.token;
+  state.agent = r.data.agent;
+  $("who").textContent = `${r.data.display_name} (${r.data.agent})`;
+  $("who").className = "badge on";
+  await heartbeat("online");
+  connectWs();
+  startPolling();
+}
+
+function connectWs() {
+  if (state.ws) { try { state.ws.close(); } catch (e) {} }
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const url = `${proto}://${location.host}/ws/agent?tenant_id=${encodeURIComponent(state.tenant)}&token=${encodeURIComponent(state.token)}`;
+  const ws = new WebSocket(url);
+  state.ws = ws;
+
+  ws.onopen = () => { setConn(true, "已连接"); };
+  ws.onclose = () => { setConn(false, "已断开"); };
+  ws.onerror = () => { setConn(false, "连接错误"); };
+  ws.onmessage = (e) => {
+    let msg = null;
+    try { msg = JSON.parse(e.data); } catch (err) { return; }
+    handleEvent(msg);
+  };
+}
+
+function setConn(on, text) {
+  $("conn").textContent = text;
+  $("conn").className = "badge " + (on ? "on" : "off");
+}
+
+// ===========================================================================
+// 事件处理（服务端推送）
+// ===========================================================================
+const EV_CLASS = {
+  "escalation.created": "created", "escalation.assigned": "assigned",
+  "session.claimed": "claimed", "session.closed": "closed",
+  "agent.disconnected": "disconnected", "agent.presence": "",
+};
+
+function handleEvent(msg) {
+  const t = msg.type || "event";
+  if (t === "console.ready") {
+    addEvent("ready", `控制台就绪 · 队列 ${msg.queue_size?.total ?? "?"} · 回放 ${msg.replayed ?? 0} 条历史事件`, msg.at);
+    refreshQueue(); refreshAgents();
+    return;
+  }
+  if (t === "pong" || t === "dispatch.result" || t === "queue.snapshot") {
+    if (t === "dispatch.result") {
+      addEvent("assigned", `派单结果：${JSON.stringify(msg.result).slice(0, 160)}`, msg.at);
+      refreshQueue();
+    }
+    return;
+  }
+
+  const cls = EV_CLASS[t] ?? "";
+  let text = t;
+  if (t === "escalation.created") {
+    text = `🆕 新转人工：${msg.skill || "通用"} · ${msg.reason || ""} · 会话 ${short(msg.session_key)}`
+         + (msg.priority ? " · 🔥高优先级" : "");
+  } else if (t === "escalation.assigned") {
+    text = `📌 已派单给 ${msg.agent_name || msg.agent}（${msg.skill || "通用"}）· 会话 ${short(msg.session_key)}`;
+  } else if (t === "session.claimed") {
+    text = `✅ ${msg.agent_name || msg.agent} 已接管会话 ${short(msg.session_key)}`;
+  } else if (t === "session.closed") {
+    text = `🏁 会话 ${short(msg.session_key)} 已办结（处理 ${msg.handle_seconds}s）`
+         + (msg.promoted ? " · 已回流知识库" : "");
+  } else if (t === "agent.disconnected") {
+    text = `⚠️ 坐席 ${msg.agent} 掉线，${msg.count} 个会话已重新排队`;
+  } else if (t === "agent.presence") {
+    text = `👤 ${msg.agent} 状态 ${msg.presence}（负载 ${msg.load}，心跳 TTL ${msg.ttl}s）`;
+  } else if (t === "session.message") {
+    text = `💬 ${msg.role === "agent" ? "坐席" : "用户"}消息：${String(msg.content || "").slice(0, 60)}`;
+  } else if (t === "session.claimed" || t === "escalation.created") {
+    refreshQueue();
+  }
+
+  addEvent(cls, text, msg.at);
+  if (["escalation.created", "escalation.assigned", "session.claimed", "session.closed", "agent.disconnected"].includes(t)) {
+    refreshQueue(); refreshAgents();
+  }
+}
+
+function addEvent(cls, text, at) {
+  const box = $("events");
+  if (box.querySelector(".muted")) box.innerHTML = "";
+  const div = document.createElement("div");
+  div.className = "ev " + cls;
+  const time = at ? new Date(at * 1000).toLocaleTimeString() : new Date().toLocaleTimeString();
+  div.innerHTML = `<div class="m">${esc(text)}</div><time>${time}</time>`;
+  box.prepend(div);
+  while (box.children.length > 200) box.removeChild(box.lastChild);
+}
+
+const short = (k) => (k ? String(k).slice(0, 14) + "…" : "-");
+
+// ===========================================================================
+// 队列与派单
+// ===========================================================================
+async function refreshQueue() {
+  const r = await api("/api/v1/agent/queue");
+  if (!r.data || !r.data.ok) return;
+  const items = r.data.data || [];
+  $("queueCount").textContent = `(${items.length})`;
+  const box = $("queue");
+  if (!items.length) { box.innerHTML = '<div class="muted">暂无待接入会话</div>'; return; }
+  box.innerHTML = items.map((it) => `
+    <div class="item ${it.priority ? "hi" : ""}">
+      <div class="t">${esc(it.skill || "通用")} ${it.priority ? "🔥" : ""}</div>
+      <div class="s">${esc(short(it.session_key))}</div>
+      <div class="s">${esc((it.reason || "").slice(0, 44))}</div>
+      <div style="margin-top:6px">
+        <button onclick="claim('${esc(it.session_key)}')">接管</button>
+      </div>
+    </div>`).join("");
+}
+
+async function claim(sessionKey) {
+  const r = await api("/api/v1/agent/claim", { method: "POST", body: { session_key: sessionKey } });
+  if (r.status === 200) {
+    addEvent("claimed", `已接管 ${short(sessionKey)}（本机操作）`);
+    refreshQueue();
+  } else {
+    addEvent("disconnected", `接管失败（${r.status}）：${r.data?.detail || JSON.stringify(r.data).slice(0, 120)}`);
+  }
+}
+
+async function dispatch() {
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({ cmd: "dispatch" }));
+  } else {
+    addEvent("disconnected", "WebSocket 未连接，无法触发派单");
+  }
+}
+
+// ===========================================================================
+// 心跳与坐席状态
+// ===========================================================================
+async function heartbeat(presence) {
+  const r = await api("/api/v1/agent/heartbeat", { method: "POST", body: { presence } });
+  if (r.status === 200) refreshAgents();
+  return r;
+}
+
+async function refreshAgents() {
+  const r = await api("/api/v1/agent/presence");
+  if (!r.data || !r.data.ok) return;
+  const rows = r.data.data || [];
+  const online = rows.filter((a) => a.online);
+  const load = online.reduce((s, a) => s + (a.current_load || 0), 0);
+  $("kpi").innerHTML = `
+    <div><b>${online.length}</b><span>在线坐席</span></div>
+    <div><b>${load}</b><span>当前总负载</span></div>`;
+  $("agents").innerHTML = `
+    <table><thead><tr><th>坐席</th><th>状态</th><th>负载</th><th>接管</th><th>平均时长</th></tr></thead>
+    <tbody>${rows.map((a) => `
+      <tr>
+        <td>${esc(a.display_name || a.agent)}</td>
+        <td>${a.online ? "🟢 " + esc(a.presence) : "⚪ 离线"}</td>
+        <td>${a.current_load}</td>
+        <td>${a.handled_sessions}</td>
+        <td>${a.avg_handle_minutes || 0} 分</td>
+      </tr>`).join("")}</tbody></table>`;
+}
+
+// ===========================================================================
+// 轮询兜底：WebSocket 断开时也能看到状态
+// ===========================================================================
+function startPolling() {
+  state.timers.forEach(clearInterval);
+  state.timers = [
+    setInterval(() => { if (state.token) { heartbeat("online"); } }, 10000),
+    setInterval(refreshQueue, 15000),
+    setInterval(refreshAgents, 15000),
+  ];
+}
+
+// ===========================================================================
+// 绑定
+// ===========================================================================
+$("login").onclick = login;
+$("logout").onclick = () => {
+  if (state.ws) state.ws.close();
+  state.timers.forEach(clearInterval);
+  state.token = ""; state.agent = "";
+  $("who").textContent = "未登录"; $("who").className = "badge";
+  setConn(false, "已断开");
+  addEvent("", "已断开连接");
+};
+$("dispatch").onclick = dispatch;
+$("refreshQueue").onclick = refreshQueue;
+$("hbOnline").onclick = () => heartbeat("online");
+$("hbBreak").onclick = () => heartbeat("break");
+$("hbOffline").onclick = () => heartbeat("offline");
+
+addEvent("", "提示：先点击右上角「登录并连接」。该页面使用真实 WebSocket，"
+  + "派单/接管/办结事件由服务端主动推送（非轮询）。");
+</script>
+</body>
+</html>

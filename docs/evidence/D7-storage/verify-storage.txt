@@ -1,0 +1,33 @@
+==========================================================================
+  存储层能力验证（租户隔离 / 读写分离 / 从库回退）
+==========================================================================
+
+[1] 租户隔离闸门
+2026-10-04T15:57:01.510861 [info     ] db.engine.primary.ready        [app.core.database] dsn=postgresql+psycopg://saaskefu:***@127.0.0.1:5432/saaskefu trace_id=-
+2026-10-04T15:57:01.547382 [error    ] db.tenant.guard_triggered      [app.core.database] hint=未绑定租户上下文即访问租户表，已阻止执行 statement='SELECT count(*) FROM support_sessions' table=support_sessions trace_id=-
+        拦截信息: 访问租户表 support_sessions 前必须绑定租户上下文（请求头 X-Tenant-ID 或 with bind(tenant_id=...)）
+  [ OK ] 无租户上下文访问租户表被拒绝
+  [ OK ] 绑定租户后正常执行
+  [ OK ] 非租户表不受闸门影响
+  [ OK ] 表名匹配使用词边界（不会误伤近似名）  -> 已按词边界实现
+
+[2] 读写分离：写主库 / 读从库
+  [ OK ] ORM 写入主库成功（默认值生效）  -> session_key=verify-1791100621
+2026-10-04T15:57:01.617419 [info     ] db.engine.replica.ready        [app.core.database] dsn=postgresql+psycopg://saaskefu:***@127.0.0.1:5433/saaskefu tenant_id=t-001 trace_id=-
+        从库可见（第 1 次轮询）: state=AI_HANDLING channel=web_widget 回退主库=False
+  [ OK ] 从库可读到刚写入的数据（流复制生效）
+  [ OK ] 正常路径未触发回退  -> read_fallback=False
+
+[3] 健康检查
+  [ OK ] 主库可用  -> PostgreSQL 16.6, compiled by Visual C++ build 1942, 64-bit
+  [ OK ] 从库可用  -> in_recovery=True
+  [ OK ] 从库处于恢复模式（确为副本）
+  [ OK ] 流复制正常  -> 客户端数=1 None/None/None
+
+[4] 清理验证数据
+  [ OK ] 验证数据已清理
+
+==========================================================================
+  通过 12 项 / 失败 0 项
+==========================================================================
+  存储层验证全部通过。

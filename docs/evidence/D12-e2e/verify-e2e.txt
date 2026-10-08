@@ -1,0 +1,613 @@
+==========================================================================
+  端到端验证：诊断 → 转人工 → 接管 → 办结
+==========================================================================
+
+[0] 准备：装载种子数据
+2026-10-04T16:17:55.634716 [info     ] seed.run.start                 [step] tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:55.752668 [info     ] db.engine.primary.ready        [app.core.database] dsn=postgresql+psycopg://saaskefu:***@127.0.0.1:5432/saaskefu tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:55.878855 [info     ] knowledge.rebuild.start        [step] tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.767544 [info     ] embedding.provider.ready       [app.core.embedding] dim=512 provider='local-hashing-v1(dim=512,ngram=1-3)' tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.775257 [warning  ] vector.collection.dropped      [app.core.vector_store] collection=support_knowledge tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.816653 [info     ] db.engine.replica.ready        [app.core.database] dsn=postgresql+psycopg://saaskefu:***@127.0.0.1:5433/saaskefu tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.855419 [info     ] vector.upsert.start            [step] tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.906825 [info     ] vector.upsert.end              [step] collection=support_knowledge count=44 duration_ms=51.55 slow=False status=ok tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.907883 [info     ] knowledge.rebuild.end          [step] duration_ms=1028.48 slow=False status=ok tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.907883 [info     ] knowledge.rebuilt              [app.services.knowledge_service] by_skill={'integration': 8, 'permission': 6, 'billing': 6, 'account': 4, 'faq': 20} cases=24 collection=support_knowledge embedding='local-hashing-v1(dim=512,ngram=1-3)' faq=20 indexed=44 tenant_id=t-001 trace_id=e2e-seed
+2026-10-04T16:17:56.907883 [info     ] seed.done                      [app.services.seed_service] agents=0 cases=0 subscriptions=0 tenant_id=t-001 tenants=0 trace_id=e2e-seed users=0
+2026-10-04T16:17:56.908890 [info     ] seed.run.end                   [step] duration_ms=1273.86 slow=False status=ok tenant_id=t-001 trace_id=e2e-seed
+      新增：租户 0 / 坐席 0 / 用户 0 / 订阅 0 / 案例 0
+  [ OK ] 知识库已建索引（44 条）  -> indexed=44 cases=24 faq=20
+
+[1] 技能 2：集成故障诊断与修复（核心演示）
+2026-10-04T16:17:56.949894 [info     ] session.created                [app.services.session_service] session_key=e2e-int-001 tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea
+2026-10-04T16:17:57.703645 [info     ] agent.turn.start               [step] session_id=e2e-int-001 tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.753220 [info     ] tool.client.ready              [app.tools.client] base_url=http://127.0.0.1:8010 session_id=e2e-int-001 tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.768928 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=6.26 session_id=e2e-int-001 status=200 target=/mock/integration/config tenant_id=t-001 tool=query_integration_config trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.788596 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=6.75 session_id=e2e-int-001 status=200 target=/mock/integration/token/refresh tenant_id=t-001 tool=refresh_integration_token trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.800426 [warning  ] tool.call.retry                [app.tools.client] attempt=1 code=DELIVERY_FAILED session_id=e2e-int-001 target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.805201 [warning  ] degraded                       [degraded] code=DELIVERY_FAILED reason=tool.upstream_error session_id=e2e-int-001 status=502 target=/mock/integration/verify tenant_id=t-001 tool=verify_integration trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.805705 [warning  ] skill.tool_failed              [app.skills.base] code=DELIVERY_FAILED error=验证消息投递失败：集成仍不可用 kind=upstream session_id=e2e-int-001 skill=integration tenant_id=t-001 tool=call_tool trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.822705 [info     ] agent.turn.end                 [step] duration_ms=118.96 session_id=e2e-int-001 session_key=e2e-int-001 skill_hint='工作区 ws-1001 的 slack 机器人从昨天开始就不回复消息了' slow=False status=ok tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea user_id=u-42
+2026-10-04T16:17:57.822705 [info     ] agent.turn_done                [app.services.agent_service] cause=TOKEN_EXPIRED duration_ms=119.55 escalate=True outcome=escalated skill=integration tenant_id=t-001 thread_id=t-001:e2e-int-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea
+2026-10-04T16:17:57.836190 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason=修复后验证仍不通过 session_key=e2e-int-001 tenant_id=t-001 to_state=QUEUED trace_id=02bc62a20afb46e5a71fba2f932be8ea
+2026-10-04T16:17:57.836190 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-int-001 size=1 tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea
+2026-10-04T16:17:57.850401 [info     ] escalation.created             [app.services.escalation_service] priority=0 request_no=ESC-20261004-EAC0DD session_key=e2e-int-001 skill=integration tenant_id=t-001 ticket_no=TK-20261004-DF31AF trace_id=02bc62a20afb46e5a71fba2f932be8ea
+2026-10-04T16:17:57.863908 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-int-001 size=1 tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea
+2026-10-04T16:17:57.863908 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=integration tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea
+2026-10-04T16:17:57.865026 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=02bc62a20afb46e5a71fba2f932be8ea type=escalation.created
+2026-10-04T16:17:57.866495 [info     ] http.request                   [app.gateway.middleware] duration_ms=939.64 method=POST path=/api/v1/chat status=200 trace_id=02bc62a20afb46e5a71fba2f932be8ea
+  [ OK ] 对话接口返回 200  -> status=200
+  [ OK ] 路由到集成技能  -> skill=integration
+  [ OK ] 诊断结论为令牌过期  -> cause=TOKEN_EXPIRED 置信度=0.95
+  [ OK ] 执行了远程修复  -> 访问令牌已刷新
+  [FAIL] 验证可达通过（真投递回执）  -> 验证失败：DELIVERY_FAILED
+  [FAIL] 闭环未转人工  -> outcome=escalated
+  [ OK ] 链路轨迹完整  -> ['route', 'observe', 'diagnose', 'act', 'verify', 'finalize']
+      回复：该工作区的访问令牌已失效，且无法自动刷新，需要您重新授权。
+请点击以下链接完成授权（15 分钟内有效）：
+https://auth.example.com/oauth/authorize?workspace=ws-100...
+
+[2] 技能 5：账号安全异常排查
+2026-10-04T16:17:57.872746 [info     ] session.created                [app.services.session_service] session_key=e2e-acc-001 tenant_id=t-001 trace_id=2873368d1510421993019954be9fdc89
+2026-10-04T16:17:57.920726 [info     ] agent.turn.start               [step] session_id=e2e-acc-001 tenant_id=t-001 trace_id=2873368d1510421993019954be9fdc89 user_id=u-42
+2026-10-04T16:17:57.977537 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=6.86 session_id=e2e-acc-001 status=200 target=/mock/account/login-events tenant_id=t-001 tool=query_login_events trace_id=2873368d1510421993019954be9fdc89 user_id=u-42
+2026-10-04T16:17:57.996160 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=7.15 session_id=e2e-acc-001 status=200 target=/mock/account/notify tenant_id=t-001 tool=notify_user trace_id=2873368d1510421993019954be9fdc89 user_id=u-42
+2026-10-04T16:17:57.999196 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.51 session_id=e2e-acc-001 status=200 target=/mock/account/password/reset-required tenant_id=t-001 tool=require_password_reset trace_id=2873368d1510421993019954be9fdc89 user_id=u-42
+2026-10-04T16:17:58.003284 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.77 session_id=e2e-acc-001 status=200 target=/mock/account/lock tenant_id=t-001 tool=lock_account trace_id=2873368d1510421993019954be9fdc89 user_id=u-42
+2026-10-04T16:17:58.015953 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=6.06 session_id=e2e-acc-001 status=200 target=/mock/account/verify tenant_id=t-001 tool=verify_account_security trace_id=2873368d1510421993019954be9fdc89 user_id=u-42
+2026-10-04T16:17:58.032223 [info     ] agent.turn.end                 [step] duration_ms=111.14 session_id=e2e-acc-001 session_key=e2e-acc-001 skill_hint='账号 u-42 凌晨在境外登录了，怀疑被盗' slow=False status=ok tenant_id=t-001 trace_id=2873368d1510421993019954be9fdc89 user_id=u-42
+2026-10-04T16:17:58.032731 [info     ] agent.turn_done                [app.services.agent_service] cause=ACCOUNT_COMPROMISE_SUSPECTED duration_ms=111.91 escalate=True outcome=escalated skill=account tenant_id=t-001 thread_id=t-001:e2e-acc-001 trace_id=2873368d1510421993019954be9fdc89
+2026-10-04T16:17:58.041764 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason=疑似账号被盗用，需人工跟进确认身份 session_key=e2e-acc-001 tenant_id=t-001 to_state=QUEUED trace_id=2873368d1510421993019954be9fdc89
+2026-10-04T16:17:58.042795 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-acc-001 size=2 tenant_id=t-001 trace_id=2873368d1510421993019954be9fdc89
+2026-10-04T16:17:58.044871 [info     ] escalation.created             [app.services.escalation_service] priority=0 request_no=ESC-20261004-30B3D9 session_key=e2e-acc-001 skill=account tenant_id=t-001 ticket_no=TK-20261004-77D165 trace_id=2873368d1510421993019954be9fdc89
+2026-10-04T16:17:58.049470 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-int-001 size=2 tenant_id=t-001 trace_id=2873368d1510421993019954be9fdc89
+2026-10-04T16:17:58.049470 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=integration tenant_id=t-001 trace_id=2873368d1510421993019954be9fdc89
+2026-10-04T16:17:58.050981 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=2873368d1510421993019954be9fdc89 type=escalation.created
+2026-10-04T16:17:58.052486 [info     ] http.request                   [app.gateway.middleware] duration_ms=182.35 method=POST path=/api/v1/chat status=200 trace_id=2873368d1510421993019954be9fdc89
+  [ OK ] 路由到账号安全技能  -> skill=account
+  [ OK ] 识别为疑似盗用  -> cause=ACCOUNT_COMPROMISE_SUSPECTED
+  [ OK ] 风险分达到高风险档  -> 风险分=100.0
+  [ OK ] 执行了锁定+通知  -> 动作=['lock_account', 'notify', 'require_password_reset']
+  [ OK ] 安全复核通过  -> 复核通过：活跃会话=0 风险分=0.12
+      回复：安全排查与处置已完成：
+1. 诊断结论：高度疑似账号被盗用
+2. 已执行：已发送安全提醒（email）；已要求下次登录重置口令；已临时锁定并吊销 3 个会话
+3. 复核结果：活跃会话 0 个，二次验证已启用，当前风险分 ...
+
+[3] 技能 1：FAQ 咨询
+2026-10-04T16:17:58.060564 [info     ] session.created                [app.services.session_service] session_key=e2e-faq-001 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e
+2026-10-04T16:17:58.107900 [info     ] agent.turn.start               [step] session_id=e2e-faq-001 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:17:58.314107 [info     ] vector.search.start            [step] session_id=e2e-faq-001 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:17:58.319254 [info     ] vector.search.end              [step] collection=support_knowledge duration_ms=3.97 session_id=e2e-faq-001 slow=False status=ok tenant_id=t-001 top_k=4 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:17:58.330600 [info     ] llm.client.ready               [app.core.llm_client] base_url=https://api.deepseek.com key='已配置(sk-8…a7f0, len=35)' model=deepseek-chat session_id=e2e-faq-001 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:17:59.315838 [info     ] langchain-openai detected system proxy configuration and no explicit `http_socket_options` / `http_client` / `http_async_client` / `openai_proxy`; skipping the custom `httpx` transport so httpx's env-proxy auto-detection applies. Pass `http_socket_options=[...]` to opt back into kernel-level TCP keepalive tuning on top of the env proxy. [langchain_openai.chat_models._client_utils] session_id=e2e-faq-001 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:17:59.640707 [info     ] HTTP Request: POST https://api.deepseek.com/chat/completions "HTTP/1.1 200 OK" [httpx2] session_id=e2e-faq-001 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:18:00.330405 [info     ] llm.call.ok                    [app.core.llm_client] attempt=1 duration_ms=1998.04 kind=faq_answer model=deepseek-chat served_model=deepseek-flash session_id=e2e-faq-001 tenant_id=t-001 tokens=235 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:18:00.386150 [info     ] agent.turn.end                 [step] duration_ms=2278.07 session_id=e2e-faq-001 session_key=e2e-faq-001 skill_hint=怎么设置消息免打扰？ slow=False status=ok tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e user_id=u-43
+2026-10-04T16:18:00.386150 [info     ] agent.turn_done                [app.services.agent_service] cause=KNOWLEDGE_FOUND duration_ms=2278.71 escalate=True outcome=escalated skill=faq tenant_id=t-001 thread_id=t-001:e2e-faq-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e
+2026-10-04T16:18:00.396706 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason='AI 判定需人工介入' session_key=e2e-faq-001 tenant_id=t-001 to_state=QUEUED trace_id=6ad13ed95c3445f29b6c62f518590f5e
+2026-10-04T16:18:00.397713 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-faq-001 size=3 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e
+2026-10-04T16:18:00.400731 [info     ] escalation.created             [app.services.escalation_service] priority=0 request_no=ESC-20261004-50D793 session_key=e2e-faq-001 skill=faq tenant_id=t-001 ticket_no=TK-20261004-2C8F80 trace_id=6ad13ed95c3445f29b6c62f518590f5e
+2026-10-04T16:18:00.404248 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-acc-001 size=3 tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e
+2026-10-04T16:18:00.404248 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=account tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e
+2026-10-04T16:18:00.405248 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=6ad13ed95c3445f29b6c62f518590f5e type=escalation.created
+2026-10-04T16:18:00.406248 [info     ] http.request                   [app.gateway.middleware] duration_ms=2349.66 method=POST path=/api/v1/chat status=200 trace_id=6ad13ed95c3445f29b6c62f518590f5e
+  [ OK ] 路由到 FAQ 技能  -> skill=faq
+  [ OK ] 生成了回答  -> 在会话设置中打开「消息免打扰」，然后选择「始终」或「定时」（例如仅夜间）。免打扰期间消息仍会保留，不会丢失。
+
+[4] 技能 3：权限访问诊断（多方案）
+2026-10-04T16:18:00.414430 [info     ] session.created                [app.services.session_service] session_key=e2e-per-001 tenant_id=t-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57
+2026-10-04T16:18:00.462724 [info     ] agent.turn.start               [step] session_id=e2e-per-001 tenant_id=t-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57 user_id=u-42
+2026-10-04T16:18:00.520612 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=6.53 session_id=e2e-per-001 status=200 target=/mock/permission/document tenant_id=t-001 tool=query_document_permission trace_id=4745c91ab34a4c56833ed12a5a31aa57 user_id=u-42
+2026-10-04T16:18:00.539196 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=7.48 session_id=e2e-per-001 status=200 target=/mock/permission/share/grant tenant_id=t-001 tool=grant_document_share trace_id=4745c91ab34a4c56833ed12a5a31aa57 user_id=u-42
+2026-10-04T16:18:00.548745 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=5.64 session_id=e2e-per-001 status=200 target=/mock/permission/verify-access tenant_id=t-001 tool=verify_document_access trace_id=4745c91ab34a4c56833ed12a5a31aa57 user_id=u-42
+2026-10-04T16:18:00.561565 [info     ] agent.turn.end                 [step] duration_ms=99.39 session_id=e2e-per-001 session_key=e2e-per-001 skill_hint='文档 doc-771 打不开，提示没有访问权限' slow=False status=ok tenant_id=t-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57 user_id=u-42
+2026-10-04T16:18:00.562562 [info     ] agent.turn_done                [app.services.agent_service] cause=SHARE_NOT_ENABLED duration_ms=100.08 escalate=True outcome=escalated skill=permission tenant_id=t-001 thread_id=t-001:e2e-per-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57
+2026-10-04T16:18:00.571739 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason='AI 判定需人工介入' session_key=e2e-per-001 tenant_id=t-001 to_state=QUEUED trace_id=4745c91ab34a4c56833ed12a5a31aa57
+2026-10-04T16:18:00.571739 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-per-001 size=4 tenant_id=t-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57
+2026-10-04T16:18:00.575253 [info     ] escalation.created             [app.services.escalation_service] priority=0 request_no=ESC-20261004-3216A5 session_key=e2e-per-001 skill=permission tenant_id=t-001 ticket_no=TK-20261004-97FC44 trace_id=4745c91ab34a4c56833ed12a5a31aa57
+2026-10-04T16:18:00.579313 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-int-001 size=4 tenant_id=t-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57
+2026-10-04T16:18:00.579313 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=integration tenant_id=t-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57
+2026-10-04T16:18:00.580565 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=4745c91ab34a4c56833ed12a5a31aa57 type=escalation.created
+2026-10-04T16:18:00.581616 [info     ] http.request                   [app.gateway.middleware] duration_ms=171.23 method=POST path=/api/v1/chat status=200 trace_id=4745c91ab34a4c56833ed12a5a31aa57
+  [ OK ] 路由到权限技能  -> skill=permission
+  [ OK ] 诊断分享未开启  -> cause=SHARE_NOT_ENABLED
+  [ OK ] 给出多个可选方案  -> 方案数=2
+  [ OK ] 执行推荐方案后复核通过  -> 复核结果：可访问（途径 grant_viewer）
+
+[5] 技能 4：计费争议（风控 + 幂等 + 转人工审批）
+2026-10-04T16:18:00.587409 [info     ] session.created                [app.services.session_service] session_key=e2e-bil-001 tenant_id=t-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+2026-10-04T16:18:00.633467 [info     ] agent.turn.start               [step] session_id=e2e-bil-001 tenant_id=t-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84 user_id=u-42
+2026-10-04T16:18:00.695026 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=6.73 session_id=e2e-bil-001 status=200 target=/mock/billing/subscription tenant_id=t-001 tool=query_subscription trace_id=f578370e0ffc4b83b5d1fd7e3d869c84 user_id=u-42
+2026-10-04T16:18:00.701724 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=6.01 session_id=e2e-bil-001 status=200 target=/mock/billing/invoice tenant_id=t-001 tool=query_invoice trace_id=f578370e0ffc4b83b5d1fd7e3d869c84 user_id=u-42
+2026-10-04T16:18:00.705238 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=2.51 session_id=e2e-bil-001 status=200 target=/mock/billing/usage tenant_id=t-001 tool=query_usage trace_id=f578370e0ffc4b83b5d1fd7e3d869c84 user_id=u-42
+2026-10-04T16:18:00.728090 [info     ] tool.call.ok                   [app.tools.client] attempt=1 duration_ms=3.57 session_id=e2e-bil-001 status=200 target=/mock/billing/adjustment/approval tenant_id=t-001 tool=request_billing_approval trace_id=f578370e0ffc4b83b5d1fd7e3d869c84 user_id=u-42
+2026-10-04T16:18:00.748722 [info     ] agent.turn.end                 [step] duration_ms=115.57 session_id=e2e-bil-001 session_key=e2e-bil-001 skill_hint='这个月账单重复计费了，账号 acct-501，我要退款' slow=False status=ok tenant_id=t-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84 user_id=u-42
+2026-10-04T16:18:00.749721 [info     ] agent.turn_done                [app.services.agent_service] cause=BILLING_DISPUTE_CONFIRMED duration_ms=116.32 escalate=True outcome=escalated skill=billing tenant_id=t-001 thread_id=t-001:e2e-bil-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+2026-10-04T16:18:00.759139 [info     ] session.transition             [app.services.session_service] from_state=AI_HANDLING handler=QUEUE reason=计费争议需人工审批 session_key=e2e-bil-001 tenant_id=t-001 to_state=QUEUED trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+2026-10-04T16:18:00.760644 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-bil-001 size=5 tenant_id=t-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+2026-10-04T16:18:00.763651 [info     ] escalation.created             [app.services.escalation_service] priority=0 request_no=ESC-20261004-DA52FC session_key=e2e-bil-001 skill=billing tenant_id=t-001 ticket_no=TK-20261004-0E07B2 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+2026-10-04T16:18:00.768956 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-faq-001 size=5 tenant_id=t-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+2026-10-04T16:18:00.768956 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=faq tenant_id=t-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+2026-10-04T16:18:00.770493 [info     ] eventbus.no_subscriber         [app.services.event_bus] tenant_id=t-001 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84 type=escalation.created
+2026-10-04T16:18:00.771502 [info     ] http.request                   [app.gateway.middleware] duration_ms=186.22 method=POST path=/api/v1/chat status=200 trace_id=f578370e0ffc4b83b5d1fd7e3d869c84
+  [ OK ] 路由到计费技能  -> skill=billing
+  [ OK ] 识别为计费争议  -> cause=BILLING_DISPUTE_CONFIRMED
+  [ OK ] 风险分已计算  -> 风险分=55.0
+  [ OK ] 大额争议转人工审批  -> decision=manual_approval
+  [ OK ] 因需审批而转人工
+
+[6] 转人工真实流转：队列 → 派单 → 接管 → 对话 → 办结
+  [ OK ] 已创建转人工记录  -> 单号=ESC-20261004-DA52FC
+  [ OK ] 已创建工单  -> 工单号=TK-20261004-0E07B2
+  [FAIL] 交接快照非空  -> 快照 0 字符
+2026-10-04T16:18:00.778292 [error    ] db.tenant.guard_triggered      [app.core.database] hint=未绑定租户上下文即访问租户表，已阻止执行 statement='SELECT agents.username, agents.display_name, agents.password_hash, agents.role, agents.presence, agents.current_load, agents.handled_sessions, agents.avg_handle' table=agents trace_id=b282213276ba445f939ff6f930b2b283
+2026-10-04T16:18:00.779297 [error    ] http.request_failed            [app.gateway.middleware] duration_ms=3.88 method=POST path=/api/v1/agent/login trace_id=b282213276ba445f939ff6f930b2b283
+2026-10-04T16:18:00.779297 [error    ] http.unhandled_error           [app.main] error='TenantContextMissing: 访问租户表 agents 前必须绑定租户上下文（请求头 X-Tenant-ID 或 with bind(tenant_id=...)）' method=POST path=/api/v1/agent/login trace_id=-
+  + Exception Group Traceback (most recent call last):
+  |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 79, in collapse_excgroups
+  |     yield
+  |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 192, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 70, in dispatch
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 109, in dispatch
+    |     return await call_next(request)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 176, in dispatch
+    |     return await call_next(request)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 237, in dispatch
+    |     return await call_next(request)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    |     await route.handle(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    |     await self.app(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 125, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 111, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 391, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\api\v1\agent_routes.py", line 53, in login
+    |     agent = s.execute(
+    |             ^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2373, in execute
+    |     return self._execute_internal(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2271, in _execute_internal
+    |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    |     result = conn.execute(
+    |              ^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    |     return meth(
+    |            ^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    |     return connection._execute_clauseelement(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    |     ret = self._execute_context(
+    |           ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    |     return self._exec_single_context(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1891, in _exec_single_context
+    |     str_statement, effective_parameters = fn(
+    |                                           ^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\events.py", line 183, in wrap_before_cursor_execute
+    |     orig_fn(
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\core\database.py", line 112, in _guard
+    |     raise TenantContextMissing(
+    | app.core.database.TenantContextMissing: 访问租户表 agents 前必须绑定租户上下文（请求头 X-Tenant-ID 或 with bind(tenant_id=...)）
+    +------------------------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 70, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 109, in dispatch
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 176, in dispatch
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 237, in dispatch
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 125, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\api\v1\agent_routes.py", line 53, in login
+    agent = s.execute(
+            ^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2373, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2271, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    return meth(
+           ^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1891, in _exec_single_context
+    str_statement, effective_parameters = fn(
+                                          ^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\events.py", line 183, in wrap_before_cursor_execute
+    orig_fn(
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\core\database.py", line 112, in _guard
+    raise TenantContextMissing(
+app.core.database.TenantContextMissing: 访问租户表 agents 前必须绑定租户上下文（请求头 X-Tenant-ID 或 with bind(tenant_id=...)）
+  [FAIL] 坐席登录成功  -> status=500
+2026-10-04T16:18:00.799633 [info     ] http.request                   [app.gateway.middleware] duration_ms=1.93 method=POST path=/api/v1/agent/heartbeat status=401 trace_id=def8490d97fb46aeb9f45ea34c8d1eb7
+  [FAIL] 坐席心跳上报成功
+2026-10-04T16:18:00.804571 [info     ] http.request                   [app.gateway.middleware] duration_ms=1.51 method=GET path=/api/v1/agent/queue status=401 trace_id=5056ff6ea21946648482f55479224ea6
+  [FAIL] 队列中能看到待接入会话  -> 队列长度=0
+2026-10-04T16:18:00.808683 [info     ] queue.enqueue                  [app.services.session_service] priority=0 session_key=e2e-acc-001 size=5 tenant_id=t-001 trace_id=-
+2026-10-04T16:18:00.809700 [warning  ] degraded                       [degraded] reason=escalation.no_agent_available skill=account tenant_id=t-001 trace_id=-
+  [FAIL] 派单成功且分配给在线坐席  -> {"assigned": false, "reason": "无可用坐席", "session_key": "e2e-acc-001"}
+2026-10-04T16:18:00.812217 [info     ] http.request                   [app.gateway.middleware] duration_ms=1.22 method=POST path=/api/v1/agent/claim status=401 trace_id=9e418144f8b34269be49f626be711572
+  [FAIL] 坐席接管成功（拿到分布式锁）  -> status=401 {"ok":false,"error":{"code":"AGENT_TOKEN_REQUIRED","message":"坐席接口需要 Bearer 令牌"}}
+  [FAIL] 会话状态切为坐席处理中  -> state=None
+2026-10-04T16:18:00.817333 [error    ] db.tenant.guard_triggered      [app.core.database] hint=未绑定租户上下文即访问租户表，已阻止执行 statement='SELECT agents.username, agents.display_name, agents.password_hash, agents.role, agents.presence, agents.current_load, agents.handled_sessions, agents.avg_handle' table=agents trace_id=266f2768df564e68ba273071bcdc3db2
+2026-10-04T16:18:00.819340 [error    ] http.request_failed            [app.gateway.middleware] duration_ms=3.81 method=POST path=/api/v1/agent/login trace_id=266f2768df564e68ba273071bcdc3db2
+2026-10-04T16:18:00.819340 [error    ] http.unhandled_error           [app.main] error='TenantContextMissing: 访问租户表 agents 前必须绑定租户上下文（请求头 X-Tenant-ID 或 with bind(tenant_id=...)）' method=POST path=/api/v1/agent/login trace_id=-
+  + Exception Group Traceback (most recent call last):
+  |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 79, in collapse_excgroups
+  |     yield
+  |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 192, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 70, in dispatch
+    |     response = await call_next(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 109, in dispatch
+    |     return await call_next(request)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 176, in dispatch
+    |     return await call_next(request)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    |     with recv_stream, send_stream, collapse_excgroups():
+    |   File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    |     self.gen.throw(typ, value, traceback)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    |     response = await self.dispatch_func(request, call_next)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 237, in dispatch
+    |     return await call_next(request)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    |     raise app_exc from app_exc.__cause__ or app_exc.__context__
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    |     await route.handle(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    |     await self.app(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 125, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 111, in app
+    |     response = await f(request)
+    |                ^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 391, in app
+    |     raw_response = await run_endpoint_function(
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    |     return await dependant.call(**values)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\api\v1\agent_routes.py", line 53, in login
+    |     agent = s.execute(
+    |             ^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2373, in execute
+    |     return self._execute_internal(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2271, in _execute_internal
+    |     result: Result[Any] = compile_state_cls.orm_execute_statement(
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\orm\context.py", line 306, in orm_execute_statement
+    |     result = conn.execute(
+    |              ^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1421, in execute
+    |     return meth(
+    |            ^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 526, in _execute_on_connection
+    |     return connection._execute_clauseelement(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1643, in _execute_clauseelement
+    |     ret = self._execute_context(
+    |           ^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1848, in _execute_context
+    |     return self._exec_single_context(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1891, in _exec_single_context
+    |     str_statement, effective_parameters = fn(
+    |                                           ^^^
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\sqlalchemy\engine\events.py", line 183, in wrap_before_cursor_execute
+    |     orig_fn(
+    |   File "D:\Project_Experience2.0\项目二\saas-support-cs\app\core\database.py", line 112, in _guard
+    |     raise TenantContextMissing(
+    | app.core.database.TenantContextMissing: 访问租户表 agents 前必须绑定租户上下文（请求头 X-Tenant-ID 或 with bind(tenant_id=...)）
+    +------------------------------------
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 70, in dispatch
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+  File "D:\Project_Experience2.0\.toolchain\python\cpython-3.11.16-windows-x86_64-none\Lib\contextlib.py", line 158, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\app\gateway\middleware.py", line 109, in dispatch
+    return await call_next(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "D:\Project_Experience2.0\项目二\saas-support-cs\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)

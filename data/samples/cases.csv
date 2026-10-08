@@ -1,0 +1,25 @@
+case_id,tenant_profile,skill,scenario,symptom,expected_diagnosis,expected_action,expected_verify_result,risk_level,source_ref
+C-INT-001,standard,integration,Slack 机器人突然不回复消息,工作区 ws-1001 的 Slack 机器人从昨天开始不再回复任何消息，重新拉群也没用,TOKEN_EXPIRED,refresh_token,delivered,low,mock:ws-1001
+C-INT-002,standard,integration,钉钉回调地址被改动导致事件收不到,工作区 ws-1002 的钉钉机器人仍能发消息，但收不到用户消息，怀疑回调地址被改过,WEBHOOK_INVALID,repair_webhook,delivered,low,mock:ws-1002
+C-INT-003,standard,integration,飞书应用权限被移除无法发送消息,工作区 ws-1003 的飞书机器人授权还在，但发送消息一直失败，提示权限不足,SCOPE_REVOKED,reauth_link,pending_user_action,medium,mock:ws-1003
+C-INT-004,standard,integration,集成配置一切正常但用户误以为故障,用户反馈机器人不回复，但检查发现令牌、回调、权限全部正常,HEALTHY,none,no_action_needed,low,mock:ws-1004
+C-INT-005,standard,integration,刷新令牌时发现刷新令牌也失效,访问令牌过期，尝试自动刷新时提示刷新令牌无效，需要用户重新授权,TOKEN_EXPIRED,reauth_link,pending_user_action,medium,mock:ws-1001
+C-INT-006,standard,integration,令牌过期同时掩盖了回调地址问题,机器人不回复，回调地址也显示不可达，但令牌同样已过期，需要区分主因,TOKEN_EXPIRED,refresh_token,delivered,low,mock:ws-1001
+C-INT-007,vip,integration,VIP 租户集成故障要求优先处理,VIP 客户的工作区机器人失效，影响客服响应，要求尽快恢复,TOKEN_EXPIRED,refresh_token,delivered,high,mock:ws-1001
+C-INT-008,standard,integration,集成查询接口本身报错导致无法诊断,尝试查询集成配置时上游接口返回 5xx，无法获取令牌与回调状态,QUERY_FAILED,escalate,escalated,medium,mock:X-Mock-Mode=error
+C-PER-001,standard,permission,同事打不开我分享的文档,文档 doc-771 分享给同事后对方仍打不开，提示没有访问权限,SHARE_NOT_ENABLED,grant_viewer,accessible,low,mock:doc-771
+C-PER-002,standard,permission,组织策略禁止外链分享,文档 doc-772 生成了分享链接但外部同事无法访问，提示组织策略限制,ORG_POLICY_BLOCKED,policy_exception,pending_approval,medium,mock:doc-772
+C-PER-003,standard,permission,文档版本冲突导致无法打开,文档 doc-773 打开时提示版本冲突，两个人在同时编辑,VERSION_CONFLICT,unlock_keep_latest,accessible,low,mock:doc-773
+C-PER-004,standard,permission,权限实际正常属于客户端缓存问题,用户说文档打不开，检查发现分享已开启、用户有权限,ACCESSIBLE,none,no_action_needed,low,mock:doc-774
+C-PER-005,standard,permission,需要编辑权限而非只读,同事需要共同编辑文档，当前只有只读权限无法修改内容,SHARE_NOT_ENABLED,grant_editor,accessible,medium,mock:doc-771
+C-PER-006,vip,permission,策略例外审批超时需人工跟进,组织策略例外申请已提交但超过 SLA 小时数仍未审批,ORG_POLICY_BLOCKED,escalate,escalated,high,mock:doc-772
+C-BIL-001,standard,billing,席位费被重复计费,11 月账单里席位费被计了两次，账号 acct-501 要求退款,BILLING_DISPUTE_CONFIRMED,manual_approval,pending_approval,high,mock:acct-501
+C-BIL-002,standard,billing,小额用量超限费用争议,账号 acct-502 的用量超限费用 42 元认为计数异常，申请退款,BILLING_DISPUTE_CONFIRMED,auto_adjust,resolved,low,mock:acct-502
+C-BIL-003,standard,billing,高频投诉用户反复申请退款,账号 acct-503 已有多次投诉记录，再次对计费规则提出异议,BILLING_DISPUTE_CONFIRMED,manual_approval,pending_approval,high,mock:acct-503
+C-BIL-004,vip,billing,大客户账单核对无异常,企业客户 acct-504 要求核对本月账单金额是否正确,NO_DISPUTE,none,no_action_needed,low,mock:acct-504
+C-BIL-005,standard,billing,重复提交退款申请需要幂等保护,同一笔争议金额用户连续提交了两次退款申请，需要避免重复退款,BILLING_DISPUTE_CONFIRMED,idempotent_hit,resolved,medium,mock:acct-502
+C-BIL-006,standard,billing,账务接口报错需确认是否已处理,发起退款时计费接口返回 5xx 错误，需要确认这笔退款是否实际成功,BILLING_DISPUTE_CONFIRMED,adjustment_confirm,resolved,medium,mock:X-Mock-Mode=error
+C-ACC-001,standard,account,境外异常登录疑似账号被盗,账号 u-42 凌晨 3 点在境外 IP 登录成功，且使用了从未见过的设备,ACCOUNT_COMPROMISE_SUSPECTED,lock_and_notify,safe,high,mock:u-42
+C-ACC-002,standard,account,异常时段登录但设备与地区正常,账号 u-43 在凌晨 2 点登录，但 IP 与设备都在常用范围内,SUSPICIOUS_MEDIUM,notify_require_mfa,safe,medium,mock:u-43
+C-ACC-003,standard,account,正常登录被误报为异常,账号 u-44 收到异常登录提醒，但登录时间与设备均与平时一致,NO_ANOMALY,none,no_action_needed,low,mock:u-44
+C-ACC-004,vip,account,高风险锁定后需要人工核实身份,账号已临时锁定，用户要求尽快恢复使用，需要人工核实身份,ACCOUNT_COMPROMISE_SUSPECTED,lock_and_notify,escalated,high,mock:u-42

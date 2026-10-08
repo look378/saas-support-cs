@@ -1,0 +1,30 @@
+==========================================================================
+  大模型端点实测
+==========================================================================
+  base_url : https://api.deepseek.com
+  key      : 已配置(sk-8…a7f0, len=35)
+  候选模型 : ['deepseek-chat', 'deepseek-flash', 'deepseek-v4-pro']
+==========================================================================
+
+[1] 候选模型名逐个实测
+  [可用] deepseek-chat        HTTP 200    758.3ms  实际服务模型=deepseek-flash  回复='收到'  tokens=17
+  [可用] deepseek-flash       HTTP 200    661.3ms  实际服务模型=deepseek-flash  回复=''  tokens=57
+  [可用] deepseek-v4-pro      HTTP 200   1150.9ms  实际服务模型=deepseek-v4-pro  回复=''  tokens=110
+
+  → 后续能力测试使用首个可用模型: deepseek-chat
+
+[2] 结构化输出（诊断结论落库前提）
+  [失败] OpenAIInvalidRequestError: Error code: 400 - {'error': {'message': 'This response_format type is unavailable now (request_id: 207dde64-f7b7-4e3a-abbc-22d264618e2a)', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+
+[3] 工具调用（技能 2 远程修复动作前提）
+  [通过] 836ms  调用工具=query_integration_config  参数={'workspace_id': 'ws-1001'}
+
+[4] 流式输出（用户端流式回复前提）
+  [通过] 779ms  分片数=35  首句='客服工单的核心作用，是把客户的问题、需求和处理过程记录下来并跟踪到底，确保每件事都有人负责、有据可查、有始有终。'
+
+[5] 时延基线（指标看板口径参考）
+  3 次短请求时延: [618, 597, 743] ms  平均=652 ms
+
+==========================================================================
+  实测结论: {"usable_models": ["deepseek-chat", "deepseek-flash", "deepseek-v4-pro"], "selected_model": "deepseek-chat", "structured_output": false, "tool_calling": true, "streaming": true, "avg_latency_ms": 652.3}
+==========================================================================

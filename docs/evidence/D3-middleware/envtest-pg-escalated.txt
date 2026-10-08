@@ -1,0 +1,9 @@
+  1_initdb                         PASS
+  2_start                          PASS
+  3_write                          PASS
+  4_read                           PASS
+  5_checkpoint_superuser           PASS
+  6_checkpoint_repl                PASS
+  7_basebackup                     PASS
+  8_recovery_after_kill            PASS(数据完整)
+  9_restart_after_graceful_stop    PASS
